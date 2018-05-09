@@ -16,11 +16,6 @@ import (
 	"strings"
 )
 
-var (
-	// ErrNameNotProvided is thrown when a name is not provided
-	ErrNotMessage = errors.New("Error: can only process Messages")
-)
-
 func main() {
 	lambda.Start(Handler)
 }
@@ -47,82 +42,10 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 		responseMessage := processMessage(update)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage), nil
 	} else {
-		error := errors.New("update is not a Message, cant extract chatId")
-		log.Println(error)
+		err = errors.New("update is not a Message, cant extract chatId")
+		log.Println(err)
 		return events.APIGatewayProxyResponse{StatusCode: 200}, nil
 	}
-}
-
-func DbStuff() string{
-
-	//dbinfo := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=require",
-	//	"devstampsdbinstance.cc0dyoy2bph0.eu-west-2.rds.amazonaws.com", "rds_master", "De8i8tcMIgVX0Hg49auUz+WHvvS5YMLOX1piFLRFlxY=", "devStamps")
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
-
-	rows, err := db.Query("SELECT 1;")
-	checkErr(err)
-
-	for rows.Next() {
-		var num int
-		err = rows.Scan(&num)
-
-		checkErr(err)
-		fmt.Println("num is ", num)
-
-		return "num is: " + strconv.Itoa(num)
-	}
-
-	return "fail"
-
-	//
-	//fmt.Println("# Inserting values")
-	//
-	//var lastInsertId int
-	//err = db.QueryRow("INSERT INTO userinfo(username,departname,created) VALUES($1,$2,$3) returning uid;", "astaxie", "研发部门", "2012-12-09").Scan(&lastInsertId)
-	//checkErr(err)
-	//fmt.Println("last inserted id =", lastInsertId)
-	//
-	//fmt.Println("# Updating")
-	//stmt, err := db.Prepare("update userinfo set username=$1 where uid=$2")
-	//checkErr(err)
-	//
-	//res, err := stmt.Exec("astaxieupdate", lastInsertId)
-	//checkErr(err)
-	//
-	//affect, err := res.RowsAffected()
-	//checkErr(err)
-	//
-	//fmt.Println(affect, "rows changed")
-	//
-	//fmt.Println("# Querying")
-	//rows, err := db.Query("SELECT * FROM userinfo")
-	//checkErr(err)
-	//
-	//for rows.Next() {
-	//	var uid int
-	//	var username string
-	//	var department string
-	//	var created time.Time
-	//	err = rows.Scan(&uid, &username, &department, &created)
-	//	checkErr(err)
-	//	fmt.Println("uid | username | department | created ")
-	//	fmt.Printf("%3v | %8v | %6v | %6v\n", uid, username, department, created)
-	//}
-	//
-	//fmt.Println("# Deleting")
-	//stmt, err = db.Prepare("delete from userinfo where uid=$1")
-	//checkErr(err)
-	//
-	//res, err = stmt.Exec(lastInsertId)
-	//checkErr(err)
-	//
-	//affect, err = res.RowsAffected()
-	//checkErr(err)
-	//
-	//fmt.Println(affect, "rows changed")
 }
 
 func checkErr(err error) {
@@ -215,12 +138,12 @@ func textMessageResponse(ChatId int64, text string) (events.APIGatewayProxyRespo
 		text,
 	}
 
-	json, _ := json.Marshal(response)
+	jsons, _ := json.Marshal(response)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode:      200,
-		Headers:         map[string]string{"Content-Type": "application/json"},
-		Body:            string(json),
+		Headers:         map[string]string{"Content-Type": "application/jsons"},
+		Body:            string(jsons),
 		IsBase64Encoded: false,
 	}
 }
