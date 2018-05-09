@@ -46,6 +46,6 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 
 	response, err := main.Handler(request)
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":212760070,\"text\":\"Added 1 keyword(s).\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":212760070,\"text\":\"Added 0 keyword(s).\"}"
 	assert.Equal(t, expected, response.Body)
 }

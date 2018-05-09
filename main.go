@@ -156,35 +156,56 @@ func addKeywordToSticker(update Update)(responseMessage string){
 	checkErr(err)
 	defer db.Close()
 
-	var stickerId int
-	//err = db.QueryRow(`INSERT INTO stickers ( file_id )  VALUES ( $1 ) ON CONFLICT DO NOTHING RETURNING id;`, stickerFileId).Scan(&lastInsertId)
-	err = db.QueryRow(`
-			INSERT INTO stickers(  file_id ) VALUES( $1 )
- 				ON CONFLICT( file_id ) DO
-  					UPDATE set file_id=excluded.file_id RETURNING id;`, stickerFileId).
-		Scan(&stickerId)
+	transaction, err := db.Begin()
+	checkErr(err)
+	defer func() {
+		err = transaction.Rollback()
+		if err != nil && err != sql.ErrTxDone{
+			panic(err)
+		}
+	}()
 
+	insertStickersStatement, err := transaction.Prepare("INSERT INTO stickers(  file_id ) VALUES( $1 ) ON CONFLICT( file_id ) DO UPDATE set file_id=excluded.file_id RETURNING id;")
+	checkErr(err)
+
+	insertKeywordsStatement, err := transaction.Prepare("INSERT INTO keywords(  keyword ) VALUES( $1 ) ON CONFLICT( keyword ) DO UPDATE set keyword=excluded.keyword RETURNING id;")
+	checkErr(err)
+
+	insertStickersKeywordsStatement, err := transaction.Prepare("INSERT INTO sticker_keywords(  sticker_id, keyword_id ) VALUES( $1, $2 ) ON CONFLICT DO NOTHING;")
+	checkErr(err)
+
+	stickerResultRows, err := insertStickersStatement.Query(stickerFileId)
+	checkErr(err)
+
+	var stickerId int
+	for stickerResultRows.Next(){
+		err = stickerResultRows.Scan(&stickerId)
+		checkErr(err)
+	}
+	err = insertStickersStatement.Close()
+	checkErr(err)
+
+	keywordsResultRows, err := insertKeywordsStatement.Query(keyword)
 	checkErr(err)
 
 	var keywordId int
-	err = db.QueryRow(`
-			INSERT INTO keywords(  keyword ) VALUES( $1 )
- 				ON CONFLICT( keyword ) DO
-  					UPDATE set keyword=excluded.keyword RETURNING id;`, keyword).
-		Scan(&keywordId)
+	for keywordsResultRows.Next(){
+		err = keywordsResultRows.Scan(&keywordId)
+		checkErr(err)
+	}
 
+	stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
 	checkErr(err)
 
-	result, err2 := db.Exec(`
-			INSERT INTO sticker_keywords (  sticker_id, keyword_id ) VALUES( $1, $2 ) RETURNING id;`, stickerId, keywordId)
-	checkErr(err2)
+	numRowsAffected, err := stickersKeywordsResult.RowsAffected()
+	checkErr(err)
 
-	if err == nil {
-		numRowsAffected, err3 := result.RowsAffected()
-		checkErr(err3)
-		return "Added "+ strconv.FormatInt(numRowsAffected, 10) +" keyword(s)."
-	}
-	return "Unable to add keyword " + keyword + " to sticker."
+	responseMessage = "Added "+ strconv.FormatInt(numRowsAffected, 10) +" keyword(s)."
+
+	err = transaction.Commit()
+	checkErr(err)
+
+	return
 }
 
 func textMessageResponse(ChatId int64, text string) (events.APIGatewayProxyResponse) {
