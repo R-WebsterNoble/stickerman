@@ -56,8 +56,18 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 	assert.Equal(t, expected, response.Body)
 }
 
+func TestHandler_HandlesEmptyInlineQuery(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"\",\"offset\":\"\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[]}"
+	assert.Equal(t, expected, response.Body)
+}
+
 func TestHandler_HandlesInlineQuery(t *testing.T) {
-	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"hi\",\"offset\":\"\"}}"}
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"boop\",\"offset\":\"\"}}"}
 
 	response, err := main.Handler(request)
 

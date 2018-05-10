@@ -42,8 +42,7 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 		responseMessage := processMessage(update)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage), nil
 	} else if update.InlineQuery != nil {
-		//inlineQueryResults := processInlineQuery(update)
-		inlineQueryResults := []string{"CAADAQADHgADVwb9BrrlpxhL2ltZAg", "CAADAQADjgsAAiPdEAaKEpsdVb8xOAI", "CAADAQADKgAD5_bHDFnhkQhE_myDAg"}
+		inlineQueryResults := processInlineQuery(update.InlineQuery.Query)
 		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults), nil
 	} else {
 		err = errors.New("update is not a Message, cant extract chatId")
@@ -94,8 +93,47 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 	}
 }
 
-func processInlineQuery(update Update) []string {
-	return []string{}
+func processInlineQuery(queryString string) []string {
+	queryString = strings.Trim(queryString, " ,:.-")
+
+	if len(queryString) == 0 {
+		return []string{}
+	}
+
+	queryString = strings.Replace(queryString, ",", " ", -1)
+	queryString = strings.Replace(queryString, ":", " ", -1)
+	queryString = strings.Replace(queryString, ".", " ", -1)
+
+	queryString = strings.Replace(queryString, "  ", " ", -1)
+	queryString = strings.Replace(queryString, "  ", " ", -1)
+	queryString = strings.Replace(queryString, "  ", " ", -1)
+
+	keywords := strings.Split(queryString, " ")
+
+	if len(keywords) == 1 && len(keywords[0]) == 0 {
+		return []string{}
+	}
+
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	rows, err := db.Query(`SELECT s.file_id FROM stickers s
+  JOIN sticker_keywords sk on s.id = sk.sticker_id
+  JOIN keywords k on sk.keyword_id = k.id
+  where k.keyword like $1
+limit 50`, keywords[0])
+	checkErr(err)
+
+	var stickerFileId string
+	for rows.Next() {
+		//var stickerFileId []string
+		rows.Scan(&stickerFileId)
+		//stickerFileIds = append(stickerFileIds, stickerFileId)
+	}
+
+	return []string{stickerFileId}
 }
 
 func checkErr(err error) {
