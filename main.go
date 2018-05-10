@@ -41,11 +41,61 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 	if update.Message != nil {
 		responseMessage := processMessage(update)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage), nil
+	} else if update.InlineQuery != nil {
+		//inlineQueryResults := processInlineQuery(update)
+		inlineQueryResults := []string{"CAADAQADHgADVwb9BrrlpxhL2ltZAg", "CAADAQADjgsAAiPdEAaKEpsdVb8xOAI", "CAADAQADKgAD5_bHDFnhkQhE_myDAg"}
+		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults), nil
 	} else {
 		err = errors.New("update is not a Message, cant extract chatId")
 		log.Println(err)
 		return events.APIGatewayProxyResponse{StatusCode: 200}, nil
 	}
+}
+
+type InlineQueryResultCachedSticker struct {
+	Type          string `json:"type"`
+	Id            string `json:"id"`
+	StickerFileId string `json:"sticker_file_id"`
+}
+
+type AnswerCallbackQuery struct {
+	Method        string                           `json:"method"`
+	InlineQueryId string                           `json:"inline_query_id"`
+	Results       []InlineQueryResultCachedSticker `json:"results"`
+}
+
+func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) events.APIGatewayProxyResponse {
+	queryResultStickers := make([]InlineQueryResultCachedSticker, len(queryResultStickerIds))
+	for i, stickerId := range queryResultStickerIds {
+		queryResultStickers[i] = InlineQueryResultCachedSticker{
+			Type:          "sticker",
+			Id:            strconv.Itoa(i),
+			StickerFileId: stickerId,
+		}
+	}
+
+	response := AnswerCallbackQuery{
+		"answerInlineQuery",
+		inlineQueryID,
+		queryResultStickers[:],
+	}
+
+	jsonResult, err := json.Marshal(response)
+	if err != nil {
+		panic(err)
+	}
+
+	jsonString := string(jsonResult)
+	return events.APIGatewayProxyResponse{
+		StatusCode:      200,
+		Headers:         map[string]string{"Content-Type": "application/json"},
+		Body:            jsonString,
+		IsBase64Encoded: false,
+	}
+}
+
+func processInlineQuery(update Update) []string {
+	return []string{}
 }
 
 func checkErr(err error) {
@@ -131,10 +181,10 @@ func addKeywordToSticker(update Update)(responseMessage string){
 	return
 }
 
-func textMessageResponse(ChatId int64, text string) (events.APIGatewayProxyResponse) {
+func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyResponse) {
 	response := Response{
 		"sendMessage",
-		ChatId,
+		chatId,
 		text,
 	}
 
@@ -142,7 +192,7 @@ func textMessageResponse(ChatId int64, text string) (events.APIGatewayProxyRespo
 
 	return events.APIGatewayProxyResponse{
 		StatusCode:      200,
-		Headers:         map[string]string{"Content-Type": "application/jsons"},
+		Headers:         map[string]string{"Content-Type": "application/json"},
 		Body:            string(jsons),
 		IsBase64Encoded: false,
 	}
