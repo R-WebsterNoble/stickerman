@@ -93,24 +93,28 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 	}
 }
 
-func processInlineQuery(queryString string) []string {
+func cleanKeywords(queryString string) string {
+	queryString = strings.TrimSpace(queryString)
 	queryString = strings.Trim(queryString, " ,:.-")
 
 	if len(queryString) == 0 {
-		return []string{}
+		return ""
 	}
 
 	queryString = strings.Replace(queryString, ",", " ", -1)
 	queryString = strings.Replace(queryString, ":", " ", -1)
 	queryString = strings.Replace(queryString, ".", " ", -1)
 
-	queryString = strings.Replace(queryString, "  ", " ", -1)
-	queryString = strings.Replace(queryString, "  ", " ", -1)
-	queryString = strings.Replace(queryString, "  ", " ", -1)
+	for strings.Contains(queryString, "  ") {
+		queryString = strings.Replace(queryString, "  ", " ", -1)
+	}
+	return queryString
+}
 
-	keywords := strings.Split(queryString, " ")
+func processInlineQuery(queryString string) []string {
+	queryString = cleanKeywords(queryString)
 
-	if len(keywords) == 1 && len(keywords[0]) == 0 {
+	if len(queryString) == 0 {
 		return []string{}
 	}
 
@@ -120,20 +124,24 @@ func processInlineQuery(queryString string) []string {
 	defer db.Close()
 
 	rows, err := db.Query(`SELECT s.file_id FROM stickers s
-  JOIN sticker_keywords sk on s.id = sk.sticker_id
-  JOIN keywords k on sk.keyword_id = k.id
-  where k.keyword like $1
-limit 50`, keywords[0])
+      JOIN sticker_keywords sk ON s.id = sk.sticker_id
+      JOIN keywords k ON sk.keyword_id = k.id
+      WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
+        LIMIT 50`, queryString)
+	defer rows.Close()
 	checkErr(err)
 
-	var stickerFileId string
+	var stickerFileIds []string
 	for rows.Next() {
-		//var stickerFileId []string
+		checkErr(err)
+		var stickerFileId string
 		rows.Scan(&stickerFileId)
-		//stickerFileIds = append(stickerFileIds, stickerFileId)
+		checkErr(err)
+		stickerFileIds = append(stickerFileIds, stickerFileId)
 	}
+	checkErr(err)
 
-	return []string{stickerFileId}
+	return stickerFileIds
 }
 
 func checkErr(err error) {
@@ -204,6 +212,7 @@ func addKeywordToSticker(update Update)(responseMessage string){
 		err = keywordsResultRows.Scan(&keywordId)
 		checkErr(err)
 	}
+	checkErr(err)
 
 	stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
 	checkErr(err)

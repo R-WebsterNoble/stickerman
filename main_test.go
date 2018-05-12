@@ -67,11 +67,31 @@ func TestHandler_HandlesEmptyInlineQuery(t *testing.T) {
 }
 
 func TestHandler_HandlesInlineQuery(t *testing.T) {
-	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"boop\",\"offset\":\"\"}}"}
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"CAADAQADKgAD5_bHDFnhkQhE_myDAg\",\"offset\":\"\"}}"}
 
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAQADHgADVwb9BrrlpxhL2ltZAg\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAQADjgsAAiPdEAaKEpsdVb8xOAI\"},{\"type\":\"sticker\",\"id\":\"2\",\"sticker_file_id\":\"CAADAQADKgAD5_bHDFnhkQhE_myDAg\"}]}"
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAQADKgAD5_bHDFnhkQhE_myDAg\"}]}"
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesInlineQueryWithMultipleResults(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"sB0Umf2MBsk\",\"offset\":\"\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAgADFgAD2EMzEqA6t2tUdswBAg\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAgADFQAD2EMzEnvdd9kfrCGwAg\"}]}"
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesInlineQueryWithMultipleKeywords(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"degWs89raGY vjmvodk8LG8\",\"offset\":\"\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAwADWwEAAm9iOwdJbHljxEZDHgI\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAwADgwEAAm9iOweRXewEFMcJ2gI\"}]}"
 	assert.Equal(t, expected, response.Body)
 }
