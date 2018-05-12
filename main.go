@@ -168,32 +168,37 @@ func processMessage(update Update) (responseMessage string) {
 
 func addKeywordToSticker(update Update)(responseMessage string){
 	stickerFileId := update.Message.ReplyToMessage.Sticker.FileID
-	keyword := strings.ToLower(update.Message.Text)
+	keywordsString := cleanKeywords(strings.ToLower(update.Message.Text))
+	keywords := strings.Split(keywordsString, " ")
 
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
 	defer db.Close()
+	checkErr(err)
 
 	transaction, err := db.Begin()
-	checkErr(err)
 	defer func() {
 		err = transaction.Rollback()
 		if err != nil && err != sql.ErrTxDone{
 			panic(err)
 		}
 	}()
-
-	insertStickersStatement, err := transaction.Prepare("INSERT INTO stickers(  file_id ) VALUES( $1 ) ON CONFLICT( file_id ) DO UPDATE set file_id=excluded.file_id RETURNING id;")
 	checkErr(err)
 
-	insertKeywordsStatement, err := transaction.Prepare("INSERT INTO keywords(  keyword ) VALUES( $1 ) ON CONFLICT( keyword ) DO UPDATE set keyword=excluded.keyword RETURNING id;")
+	insertStickersStatement, err := transaction.Prepare("INSERT INTO stickers( file_id ) VALUES( $1 ) ON CONFLICT( file_id ) DO UPDATE set file_id=excluded.file_id RETURNING id;")
+	defer insertStickersStatement.Close()
 	checkErr(err)
 
-	insertStickersKeywordsStatement, err := transaction.Prepare("INSERT INTO sticker_keywords(  sticker_id, keyword_id ) VALUES( $1, $2 ) ON CONFLICT DO NOTHING;")
+	insertKeywordsStatement, err := transaction.Prepare("INSERT INTO keywords( keyword ) VALUES( $1 ) ON CONFLICT( keyword ) DO UPDATE set keyword=excluded.keyword RETURNING id;")
+	defer insertKeywordsStatement.Close()
+	checkErr(err)
+
+	insertStickersKeywordsStatement, err := transaction.Prepare("INSERT INTO sticker_keywords( sticker_id, keyword_id ) VALUES( $1, $2 ) ON CONFLICT DO NOTHING;")
+	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
 
 	stickerResultRows, err := insertStickersStatement.Query(stickerFileId)
+	defer stickerResultRows.Close()
 	checkErr(err)
 
 	var stickerId int
@@ -204,23 +209,31 @@ func addKeywordToSticker(update Update)(responseMessage string){
 	err = insertStickersStatement.Close()
 	checkErr(err)
 
-	keywordsResultRows, err := insertKeywordsStatement.Query(keyword)
-	checkErr(err)
+	var keywordsAdded int64
+	for _, keyword := range keywords {
 
-	var keywordId int
-	for keywordsResultRows.Next(){
-		err = keywordsResultRows.Scan(&keywordId)
+		keywordsResultRows, err := insertKeywordsStatement.Query(keyword)
 		checkErr(err)
+
+		var keywordId int
+		for keywordsResultRows.Next() {
+			err = keywordsResultRows.Scan(&keywordId)
+			checkErr(err)
+		}
+		checkErr(err)
+		err = keywordsResultRows.Close()
+		checkErr(err)
+
+		stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
+		checkErr(err)
+
+		numRowsAffected, err := stickersKeywordsResult.RowsAffected()
+		checkErr(err)
+
+		keywordsAdded += numRowsAffected
 	}
-	checkErr(err)
 
-	stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
-	checkErr(err)
-
-	numRowsAffected, err := stickersKeywordsResult.RowsAffected()
-	checkErr(err)
-
-	responseMessage = "Added "+ strconv.FormatInt(numRowsAffected, 10) +" keyword(s)."
+	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " keyword(s)."
 
 	err = transaction.Commit()
 	checkErr(err)
