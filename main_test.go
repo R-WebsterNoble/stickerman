@@ -14,7 +14,7 @@ func TestHandler_HandlesUnknownMessage(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	assert.Equal(t, "", response.Body)
+	assert.Equal(t, "unable to process request: neither message or update found", response.Body)
 }
 
 func TestHandler_HandlesInvalidJson(t *testing.T) {
@@ -23,7 +23,7 @@ func TestHandler_HandlesInvalidJson(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	assert.Equal(t, "", response.Body)
+	assert.Equal(t, "error while Unmarshaling", response.Body)
 }
 
 func TestHandler_HandlesMessage(t *testing.T) {
@@ -32,7 +32,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":212760070,\"text\":\"You said /start\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":212760070,\"text\":\"This Bot is designed to help you find Stickers.\\n\\nUsage:\\nTo search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\\n\\nTo add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -57,7 +57,7 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 }
 
 func TestHandler_HandlesStickerReplyWithMultipleKeywords(t *testing.T) {
-	//t.SkipNow() // need to setup test db fixtures for this to work more than once
+	t.SkipNow() // need to setup test db fixtures for this to work more than once
 	request := events.APIGatewayProxyRequest{Body: "{\"message\":{\"message_id\":359,\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"chat\":{\"id\":212760070,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"type\":\"private\"},\"date\":1525458701,\"reply_to_message\":{\"message_id\":321,\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"chat\":{\"id\":212760070,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"type\":\"private\"},\"date\":1524777329,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"👉\",\"set_name\":\"Feroxdoon2\",\"thumb\":{\"file_id\":\"AAQBABOqNQMwAAQ78UrarWIt0iRYAAIC\",\"file_size\":4670,\"width\":128,\"height\":128},\"file_id\":\"CAADAQADKgAD5_bHDFnhkQhE_myDAg\",\"file_size\":24458}},\"text\":\"keyword1 keyword2\"}}"}
 
 	response, err := main.Handler(request)

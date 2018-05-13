@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"errors"
 	"fmt"
 	"runtime/debug"
 	"database/sql"
@@ -31,25 +30,35 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 
 	log.Println("Request Body: ", request.Body)
 
+	response = ProcessRequest(request)
+
+	log.Println("Rsponce Body: ", response.Body)
+
+	return response, nil
+}
+
+func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIGatewayProxyResponse) {
 	var update Update
 	if err := json.Unmarshal([]byte(request.Body), &update);
-	err != nil {
-		log.Println("error while Unmarshaling: ", err)
-		return events.APIGatewayProxyResponse{StatusCode: 200}, nil
+		err != nil {
+		errorMessage := "error while Unmarshaling"
+		log.Println(errorMessage, err)
+		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 	}
 
 	if update.Message != nil {
 		responseMessage := processMessage(update)
-		return textMessageResponse(update.Message.Chat.ID, responseMessage), nil
+		return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
 		inlineQueryResults := processInlineQuery(update.InlineQuery.Query)
-		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults), nil
-	} else {
-		err = errors.New("update is not a Message, cant extract chatId")
-		log.Println(err)
-		return events.APIGatewayProxyResponse{StatusCode: 200}, nil
+		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults)
 	}
+
+	errorMessage := "unable to process request: neither message or update found"
+	log.Println(errorMessage)
+	return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 }
+
 
 type InlineQueryResultCachedSticker struct {
 	Type          string `json:"type"`
