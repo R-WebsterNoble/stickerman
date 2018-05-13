@@ -32,7 +32,7 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 
 	response = ProcessRequest(request)
 
-	log.Println("Rsponce Body: ", response.Body)
+	log.Println("Responce Body: ", response.Body)
 
 	return response, nil
 }
@@ -45,7 +45,6 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		log.Println(errorMessage, err)
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 	}
-
 	if update.Message != nil {
 		responseMessage := processMessage(update)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage)
