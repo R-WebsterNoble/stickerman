@@ -151,19 +151,26 @@ func checkErr(err error) {
 }
 
 func processMessage(update Update) (responseMessage string) {
-	var response string
 
 	if update.Message.ReplyToMessage != nil && update.Message.ReplyToMessage.Sticker != nil && len(update.Message.Text) != 0{
 		return addKeywordToSticker(update)
 	}
 
 	if len(update.Message.Text) != 0 {
-		response = "You said " + update.Message.Text
+		if update.Message.Text == "/start" || update.Message.Text == "/help" {
+			return "This Bot is designed to help you find Stickers.\n" +
+				"\n" +
+				"Usage:\n" +
+				"To search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
+				"\n" +
+				"To add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add."
+		}
+		return "You said " + update.Message.Text
 	} else if update.Message.Sticker != nil {
-		response = "You sent a " + update.Message.Sticker.Emoji + " sticker!"
+		return "You sent a " + update.Message.Sticker.Emoji + " sticker!"
 	}
 
-	return response
+	return "Unable to process command"
 }
 
 func addKeywordToSticker(update Update)(responseMessage string){
