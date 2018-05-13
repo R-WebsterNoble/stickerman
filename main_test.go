@@ -87,6 +87,16 @@ func TestHandler_HandlesInlineQuery(t *testing.T) {
 	assert.Equal(t, expected, response.Body)
 }
 
+func TestHandler_HandlesInlineQueryWithSQLI(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\" '''\",\"offset\":\"\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAQADKgAD5_bHDFnhkQhE_myDAg\"}]}"
+	assert.Equal(t, expected, response.Body)
+}
+
 func TestHandler_HandlesInlineQueryWithMultipleResults(t *testing.T) {
 	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"sB0Umf2MBsk\",\"offset\":\"\"}}"}
 

@@ -123,7 +123,7 @@ func processInlineQuery(queryString string) []string {
 	checkErr(err)
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT s.file_id FROM stickers s
+	rows, err := db.Query(`SELECT DISTINCT s.file_id FROM stickers s
       JOIN sticker_keywords sk ON s.id = sk.sticker_id
       JOIN keywords k ON sk.keyword_id = k.id
       WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
