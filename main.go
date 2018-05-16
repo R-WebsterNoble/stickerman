@@ -174,7 +174,7 @@ func checkErr(err error) {
 
 func processMessage(update Update) (responseMessage string) {
 
-	if update.Message.ReplyToMessage != nil && update.Message.ReplyToMessage.Sticker != nil && len(update.Message.Text) != 0{
+	if update.Message.ReplyToMessage != nil && update.Message.ReplyToMessage.Sticker != nil && len(update.Message.Text) != 0 {
 		return addKeywordToSticker(update)
 	}
 
@@ -195,7 +195,7 @@ func processMessage(update Update) (responseMessage string) {
 	return "Unable to process command"
 }
 
-func addKeywordToSticker(update Update)(responseMessage string){
+func addKeywordToSticker(update Update) (responseMessage string) {
 	stickerFileId := update.Message.ReplyToMessage.Sticker.FileID
 	keywordsString := cleanKeywords(strings.ToLower(update.Message.Text))
 	keywords := strings.Split(keywordsString, " ")
@@ -208,7 +208,7 @@ func addKeywordToSticker(update Update)(responseMessage string){
 	transaction, err := db.Begin()
 	defer func() {
 		err = transaction.Rollback()
-		if err != nil && err != sql.ErrTxDone{
+		if err != nil && err != sql.ErrTxDone {
 			panic(err)
 		}
 	}()
@@ -231,7 +231,7 @@ func addKeywordToSticker(update Update)(responseMessage string){
 	checkErr(err)
 
 	var stickerId int
-	for stickerResultRows.Next(){
+	for stickerResultRows.Next() {
 		err = stickerResultRows.Scan(&stickerId)
 		checkErr(err)
 	}
