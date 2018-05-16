@@ -116,3 +116,13 @@ func TestHandler_HandlesInlineQueryWithMultipleKeywords(t *testing.T) {
 	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAwADWwEAAm9iOwdJbHljxEZDHgI\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAwADgwEAAm9iOweRXewEFMcJ2gI\"}]}"
 	assert.Equal(t, expected, response.Body)
 }
+
+func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211742,\"inline_query\":{\"id\":\"913797545109391540\",\"from\":{\"id\":212760070,\"is_bot\":false,\"first_name\":\"Didassi\",\"username\":\"Didassi\",\"language_code\":\"en-GB\"},\"query\":\"guhYMplLkEtJ3Q l27rGJHCmOqomg\",\"offset\":\"\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAgAD8wIAApzW5wrgLgRxhQ_BAgI\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAgADMAIAAs-71A59r1FSPKQrowI\"}]}"
+	assert.Equal(t, expected, response.Body)
+}

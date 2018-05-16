@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"runtime/debug"
 	"database/sql"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"os"
 	"strconv"
 	"strings"
+	"github.com/adam-hanna/arrayOperations"
 )
 
 func main() {
@@ -57,7 +58,6 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 	log.Println(errorMessage)
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 }
-
 
 type InlineQueryResultCachedSticker struct {
 	Type          string `json:"type"`
@@ -131,25 +131,39 @@ func processInlineQuery(queryString string) []string {
 	checkErr(err)
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT DISTINCT s.file_id FROM stickers s
-      JOIN sticker_keywords sk ON s.id = sk.sticker_id
-      JOIN keywords k ON sk.keyword_id = k.id
-      WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
-        LIMIT 50`, queryString)
+	rows, err := db.Query(`SELECT  
+  array_agg(s.file_id)
+FROM
+  keywords k
+  JOIN sticker_keywords sk ON sk.keyword_id = k.id
+  JOIN stickers s ON sk.sticker_id = s.id
+WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
+GROUP BY k.keyword`, queryString)
 	defer rows.Close()
 	checkErr(err)
 
-	var stickerFileIds []string
-	for rows.Next() {
+	var allStickerFileIds []string
+	if rows.Next() {
+		rows.Scan(pq.Array(&allStickerFileIds))
 		checkErr(err)
-		var stickerFileId string
-		rows.Scan(&stickerFileId)
-		checkErr(err)
-		stickerFileIds = append(stickerFileIds, stickerFileId)
+		for rows.Next() {
+			var fileIdsForKeyword []string
+			rows.Scan(pq.Array(&fileIdsForKeyword))
+			checkErr(err)
+
+			v, ok := arrayOperations.Intersect(allStickerFileIds, fileIdsForKeyword)
+			if !ok {
+				return allStickerFileIds
+			}
+			allStickerFileIds, ok = v.Interface().([]string)
+			if !ok {
+				return allStickerFileIds
+			}
+		}
 	}
 	checkErr(err)
 
-	return stickerFileIds
+	return allStickerFileIds
 }
 
 func checkErr(err error) {
