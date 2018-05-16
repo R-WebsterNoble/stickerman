@@ -2,7 +2,7 @@ package main_test
 
 import (
 	"testing"
-	"stickerman"
+	"github.com/R-WebsterNoble/stickerman"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
 )
