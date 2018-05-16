@@ -126,6 +126,8 @@ func processInlineQuery(queryString string) []string {
 		return []string{}
 	}
 
+	queryString = EscapeSql(queryString)
+
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
 	checkErr(err)
@@ -164,6 +166,13 @@ GROUP BY k.keyword`, queryString)
 	checkErr(err)
 
 	return allStickerFileIds
+}
+
+func EscapeSql(s string) (result string) {
+	result = strings.Replace(s, "\\", "\\\\", -1)
+	result = strings.Replace(result, "%", "\\%", -1)
+	result = strings.Replace(result, "_", "\\_", -1)
+	return result
 }
 
 func checkErr(err error) {
