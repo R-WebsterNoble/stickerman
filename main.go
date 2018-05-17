@@ -140,7 +140,7 @@ FROM
   JOIN sticker_keywords sk ON sk.keyword_id = k.id
   JOIN stickers s ON sk.sticker_id = s.id
 WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
-GROUP BY k.keyword`, queryString)
+GROUP BY k.keyword`, queryString+"%")
 	defer rows.Close()
 	checkErr(err)
 
