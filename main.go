@@ -286,12 +286,12 @@ func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyRespo
 		text,
 	}
 
-	jsons, _ := json.Marshal(response)
+	jsonString, _ := json.Marshal(response)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode:      200,
 		Headers:         map[string]string{"Content-Type": "application/json"},
-		Body:            string(jsons),
+		Body:            string(jsonString),
 		IsBase64Encoded: false,
 	}
 }
