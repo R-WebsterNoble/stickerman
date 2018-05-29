@@ -49,7 +49,7 @@ create table sessions
   chat_id bigint                                         not null
     constraint unique_sessions_chat_id
     unique,
-  file_id text                                           not null,
+  file_id text,
   mode    varchar(20) default 'add' :: character varying not null
 );
 
