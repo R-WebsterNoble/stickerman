@@ -43,12 +43,12 @@ create index index_keyword_id
 
 create table sessions
 (
-  id      bigserial   not null
+  id      bigserial                                      not null
     constraint unique_sessions_id
     primary key,
-  chat_id bigint      not null,
-  file_id text        not null,
-  mode    varchar(20) not null
+  chat_id bigint                                         not null,
+  file_id text                                           not null,
+  mode    varchar(20) default 'add' :: character varying not null
 );
 
 create index index_chat_id
