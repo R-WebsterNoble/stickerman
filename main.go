@@ -47,7 +47,7 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 	}
 	if update.Message != nil {
-		responseMessage := processMessage(update)
+		responseMessage := processMessage(update.Message)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
 		inlineQueryResults := processInlineQuery(update.InlineQuery.Query)
@@ -181,14 +181,14 @@ func checkErr(err error) {
 	}
 }
 
-func processMessage(update Update) (responseMessage string) {
+func processMessage(message *Message) (responseMessage string) {
 
-	if update.Message.ReplyToMessage != nil && update.Message.ReplyToMessage.Sticker != nil && len(update.Message.Text) != 0 {
-		return addKeywordToSticker(update)
+	if message.ReplyToMessage != nil && message.ReplyToMessage.Sticker != nil && len(message.Text) != 0 {
+		return addKeywordFromStickerReply(message)
 	}
 
-	if len(update.Message.Text) != 0 {
-		if update.Message.Text == "/start" || update.Message.Text == "/help" {
+	if len(message.Text) != 0 {
+		if message.Text == "/start" || message.Text == "/help" {
 			return "This Bot is designed to help you find Stickers.\n" +
 				"\n" +
 				"Usage:\n" +
@@ -196,19 +196,33 @@ func processMessage(update Update) (responseMessage string) {
 				"\n" +
 				"To add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add."
 		}
-		return "You said " + update.Message.Text
-	} else if update.Message.Sticker != nil {
-		return "You sent a " + update.Message.Sticker.Emoji + " sticker!"
+		return ProcessKeywordMessage(message)
+	} else if message.Sticker != nil {
+		return ProcessStickerMessage(message)
 	}
 
 	return "Unable to process command"
 }
 
-func addKeywordToSticker(update Update) (responseMessage string) {
-	stickerFileId := update.Message.ReplyToMessage.Sticker.FileID
-	keywordsString := cleanKeywords(strings.ToLower(update.Message.Text))
-	keywords := strings.Split(keywordsString, " ")
+func ProcessKeywordMessage(message *Message) string {
 
+	return "You said " + message.Text
+}
+
+func ProcessStickerMessage(message *Message) string {
+
+	return "You sent a " + message.Sticker.Emoji + " sticker!"
+}
+
+func addKeywordFromStickerReply(message *Message) (responseMessage string) {
+	stickerFileId := message.ReplyToMessage.Sticker.FileID
+	keywords := cleanKeywords(strings.ToLower(message.Text))
+
+	return addKeywordToSticker(stickerFileId, keywords)
+}
+
+func addKeywordToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
+	keywords := strings.Split(keywordsString, " ")
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
 	defer db.Close()
