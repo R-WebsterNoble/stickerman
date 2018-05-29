@@ -140,7 +140,7 @@ FROM
   JOIN sticker_keywords sk ON sk.keyword_id = k.id
   JOIN stickers s ON sk.sticker_id = s.id
 WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
-GROUP BY k.keyword`, queryString+"%")
+GROUP BY k.keyword;`, queryString+"%")
 	defer rows.Close()
 	checkErr(err)
 
@@ -182,46 +182,111 @@ func checkErr(err error) {
 }
 
 func processMessage(message *Message) (responseMessage string) {
-
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Sticker != nil && len(message.Text) != 0 {
 		return addKeywordFromStickerReply(message)
 	}
 
 	if len(message.Text) != 0 {
-		if message.Text == "/start" || message.Text == "/help" {
-			return "This Bot is designed to help you find Stickers.\n" +
-				"\n" +
-				"Usage:\n" +
-				"To search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
-				"\n" +
-				"To add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add."
+		if message.Text[0] == '/' {
+			switch message.Text {
+			case "/start":
+				fallthrough
+			case "/help":
+				return "This Bot is designed to help you find Stickers.\n" +
+					"\n" +
+					"Usage:\n" +
+					"To search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
+					"\n" +
+					"To add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add."
+			case "/add":
+				SetUserMode(message.Chat.ID, "add")
+				return "You are now adding keywords"
+			case "/remove":
+				SetUserMode(message.Chat.ID, "remove")
+				return "You are now removing keywords"
+			}
+		} else {
+			return ProcessKeywordMessage(message)
 		}
-		return ProcessKeywordMessage(message)
 	} else if message.Sticker != nil {
 		return ProcessStickerMessage(message)
 	}
 
-	return "Unable to process command"
+	return "I don't know how to interpret your message"
 }
 
-func ProcessKeywordMessage(message *Message) string {
+func ProcessKeywordMessage(message *Message) (responseMessage string) {
+	usersStickerId, mode := GetUserState(message.Chat.ID)
+	if usersStickerId == "" {
+		responseMessage = "Send a sticker to me then I'll be able to add searchable keywords to it"
+	}
 
-	return "You said " + message.Text
+	switch mode {
+	case "add":
+		responseMessage = addKeywordsToSticker(usersStickerId, message.Text)
+	case "remove":
+		//return removeKeywordsFromSticker(usersStickerId, message.Text)
+	}
+
+	return responseMessage
 }
 
-func ProcessStickerMessage(message *Message) string {
+func ProcessStickerMessage(message *Message) (responseMessage string) {
+	mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
+	return "Now you are " + mode + "ing keywords to " + message.Sticker.Emoji + " sticker"
+}
 
-	return "You sent a " + message.Sticker.Emoji + " sticker!"
+func SetUserMode(chatId int64, userMode string) {
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	_, err = db.Exec("INSERT INTO sessions (chat_id, mode) VALUES ($1, $2) ON CONFLICT( chat_id ) DO UPDATE set mode=excluded.mode;", chatId, userMode)
+	checkErr(err)
+
+	return
+}
+
+func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (mode string) {
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	err = db.QueryRow("INSERT INTO sessions (chat_id, file_id) VALUES ($1, $2)\nON CONFLICT( chat_id ) DO UPDATE set file_id=excluded.file_id  RETURNING mode;", chatId, usersStickerId).Scan(&mode)
+	checkErr(err)
+
+	return
+}
+
+func GetUserState(chatId int64) (usersStickerId string, usersMode string) {
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	rows, err := db.Query(`SELECT file_id, mode FROM sessions WHERE chat_id = $1`, chatId)
+	defer rows.Close()
+	checkErr(err)
+
+	for rows.Next() {
+		rows.Scan(&usersStickerId, &usersMode)
+		checkErr(err)
+	}
+	checkErr(err)
+
+	return
 }
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
 	keywords := cleanKeywords(strings.ToLower(message.Text))
 
-	return addKeywordToSticker(stickerFileId, keywords)
+	return addKeywordsToSticker(stickerFileId, keywords)
 }
 
-func addKeywordToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
+func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
 	keywords := strings.Split(keywordsString, " ")
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
