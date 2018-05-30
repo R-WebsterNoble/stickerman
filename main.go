@@ -101,27 +101,21 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 	}
 }
 
-func cleanKeywords(queryString string) string {
-	queryString = strings.ToLower(queryString)
-	queryString = strings.TrimSpace(queryString)
-	queryString = strings.Trim(queryString, " ,:.-")
-
+func cleanKeywords(queryString string) []string {
 	if len(queryString) == 0 {
-		return ""
+		return []string{}
 	}
 
+	queryString = strings.ToLower(queryString)
 	queryString = strings.Replace(queryString, ",", " ", -1)
 	queryString = strings.Replace(queryString, ":", " ", -1)
 	queryString = strings.Replace(queryString, ".", " ", -1)
 
-	for strings.Contains(queryString, "  ") {
-		queryString = strings.Replace(queryString, "  ", " ", -1)
-	}
-	return queryString
+	return strings.Fields(queryString)
 }
 
 func processInlineQuery(queryString string) []string {
-	queryString = cleanKeywords(queryString)
+	queryString = strings.Join(cleanKeywords(queryString), " ")
 
 	if len(queryString) == 0 {
 		return []string{}
@@ -286,7 +280,7 @@ func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 }
 
 func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
-	keywords := strings.Split(cleanKeywords(keywordsString), " ")
+	keywords := cleanKeywords(keywordsString)
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
 	defer db.Close()
