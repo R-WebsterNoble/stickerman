@@ -198,7 +198,7 @@ func processMessage(message *Message) (responseMessage string) {
 				return "You are now adding keywords"
 			case "/remove":
 				SetUserMode(message.Chat.ID, "remove")
-				return "You are now removing keywords"
+				return "You are now removing keywords from the sticker"
 			}
 		} else {
 			return ProcessKeywordMessage(message)
@@ -220,7 +220,7 @@ func ProcessKeywordMessage(message *Message) (responseMessage string) {
 	case "add":
 		responseMessage = addKeywordsToSticker(usersStickerId, message.Text)
 	case "remove":
-		//return removeKeywordsFromSticker(usersStickerId, message.Text)
+		return removeKeywordsFromSticker(usersStickerId, message.Text)
 	}
 
 	return responseMessage
@@ -281,6 +281,11 @@ func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 
 func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
 	keywords := cleanKeywords(keywordsString)
+
+	if len(keywords) == 0 {
+		return "No keywords to add"
+	}
+
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
 	defer db.Close()
@@ -349,6 +354,26 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 	checkErr(err)
 
 	return
+}
+
+func removeKeywordsFromSticker(stickerFileId string, keywordsString string) string {
+	keywords := strings.Join(cleanKeywords(keywordsString), " ")
+
+	if len(keywords) == 0 {
+		return "No keywords to remove"
+	}
+
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	result, err := db.Exec("DELETE FROM sticker_keywords sk \nUSING keywords k, stickers s\n    WHERE sk.keyword_id = k.id\n    AND sk.sticker_id = s.id\nand s.file_id = $1\nand k.keyword ILIKE ANY (string_to_array($2, ' '));", stickerFileId, keywords)
+	checkErr(err)
+
+	numRows, err := result.RowsAffected()
+
+	return "You have deleted " + strconv.FormatInt(numRows, 10) + " keywords."
 }
 
 func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyResponse) {

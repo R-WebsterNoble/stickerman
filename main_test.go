@@ -187,3 +187,13 @@ func TestHandler_HandlesKeywordState(t *testing.T) {
 	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"Added 0 keyword(s).\"}"
 	assert.Equal(t, expected, response.Body)
 }
+
+func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: "{\"message\":{\"message_id\":900,\"from\":{\"id\":12345,\"is_bot\":false,\"first_name\":\"blah\",\"username\":\"blah\",\"language_code\":\"en-GB\"},\"chat\":{\"id\":12345,\"first_name\":\"user\",\"username\":\"user\",\"type\":\"private\"},\"date\":1527633135,\"text\":\"hi\"}}"}
+
+	response, err := main.Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it\"}"
+	assert.Equal(t, expected, response.Body)
+}
