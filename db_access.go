@@ -24,14 +24,16 @@ func getAllStickerIdsForKeywords(keywordsString string) []string {
 	checkErr(err)
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT  
-  array_agg(s.file_id)
+	query := `
+SELECT array_agg(s.file_id)
 FROM
   keywords k
   JOIN sticker_keywords sk ON sk.keyword_id = k.id
   JOIN stickers s ON sk.sticker_id = s.id
 WHERE k.keyword ILIKE ANY ($1)
-GROUP BY k.keyword;`, pq.Array(keywords))
+GROUP BY k.keyword;
+`
+	rows, err := db.Query(query, pq.Array(keywords))
 	defer rows.Close()
 	checkErr(err)
 
@@ -44,11 +46,12 @@ GROUP BY k.keyword;`, pq.Array(keywords))
 			rows.Scan(pq.Array(&fileIdsForKeyword))
 			checkErr(err)
 
-			v, ok := arrayOperations.Intersect(allStickerFileIds, fileIdsForKeyword)
+			intersectionResult, ok := arrayOperations.Intersect(allStickerFileIds, fileIdsForKeyword)
 			if !ok {
 				return allStickerFileIds
 			}
-			allStickerFileIds, ok = v.Interface().([]string)
+
+			allStickerFileIds, ok = intersectionResult.Interface().([]string)
 			if !ok {
 				return allStickerFileIds
 			}
@@ -65,7 +68,11 @@ func SetUserMode(chatId int64, userMode string) {
 	checkErr(err)
 	defer db.Close()
 
-	_, err = db.Exec("INSERT INTO sessions (chat_id, mode) VALUES ($1, $2) ON CONFLICT( chat_id ) DO UPDATE set mode=excluded.mode;", chatId, userMode)
+	query := `
+INSERT INTO sessions (chat_id, mode) VALUES ($1, $2)
+ON CONFLICT (chat_id)
+  DO UPDATE set mode = excluded.mode;`
+	_, err = db.Exec(query, chatId, userMode)
 	checkErr(err)
 
 	return
@@ -77,7 +84,13 @@ func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (mode string)
 	checkErr(err)
 	defer db.Close()
 
-	err = db.QueryRow("INSERT INTO sessions (chat_id, file_id) VALUES ($1, $2)\nON CONFLICT( chat_id ) DO UPDATE set file_id=excluded.file_id  RETURNING mode;", chatId, usersStickerId).Scan(&mode)
+	query := `
+INSERT INTO sessions (chat_id, file_id)
+VALUES ($1, $2)
+ON CONFLICT (chat_id)
+  DO UPDATE set file_id = excluded.file_id
+RETURNING mode;`
+	err = db.QueryRow(query, chatId, usersStickerId).Scan(&mode)
 	checkErr(err)
 
 	return
@@ -89,7 +102,13 @@ func GetUserState(chatId int64) (usersStickerId string, usersMode string) {
 	checkErr(err)
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT file_id, mode FROM sessions WHERE chat_id = $1`, chatId)
+	query := `
+SELECT
+  file_id,
+  mode
+FROM sessions
+WHERE chat_id = $1`
+	rows, err := db.Query(query, chatId)
 	defer rows.Close()
 	checkErr(err)
 
@@ -123,15 +142,28 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 	}()
 	checkErr(err)
 
-	insertStickersStatement, err := transaction.Prepare("INSERT INTO stickers( file_id ) VALUES( $1 ) ON CONFLICT( file_id ) DO UPDATE set file_id=excluded.file_id RETURNING id;")
+	query := `
+INSERT INTO stickers (file_id) VALUES ($1)
+ON CONFLICT (file_id)
+  DO UPDATE set file_id = excluded.file_id
+RETURNING id;`
+	insertStickersStatement, err := transaction.Prepare(query)
 	defer insertStickersStatement.Close()
 	checkErr(err)
 
-	insertKeywordsStatement, err := transaction.Prepare("INSERT INTO keywords( keyword ) VALUES( $1 ) ON CONFLICT( keyword ) DO UPDATE set keyword=excluded.keyword RETURNING id;")
+	query1 := `
+INSERT INTO keywords (keyword) VALUES ($1)
+ON CONFLICT (keyword)
+  DO UPDATE set keyword = excluded.keyword
+RETURNING id;`
+	insertKeywordsStatement, err := transaction.Prepare(query1)
 	defer insertKeywordsStatement.Close()
 	checkErr(err)
 
-	insertStickersKeywordsStatement, err := transaction.Prepare("INSERT INTO sticker_keywords( sticker_id, keyword_id ) VALUES( $1, $2 ) ON CONFLICT DO NOTHING;")
+	query2 := `
+INSERT INTO sticker_keywords (sticker_id, keyword_id) VALUES ($1, $2)
+ON CONFLICT DO NOTHING;`
+	insertStickersKeywordsStatement, err := transaction.Prepare(query2)
 	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
 
@@ -191,8 +223,14 @@ func removeKeywordsFromSticker(stickerFileId string, keywordsString string) stri
 	db, err := sql.Open("postgres", connStr)
 	checkErr(err)
 	defer db.Close()
-
-	result, err := db.Exec("DELETE FROM sticker_keywords sk \nUSING keywords k, stickers s\n    WHERE sk.keyword_id = k.id\n    AND sk.sticker_id = s.id\nand s.file_id = $1\nand k.keyword ILIKE ANY ($2);", stickerFileId, pq.Array(keywords))
+	query := `
+DELETE FROM sticker_keywords sk
+USING keywords k, stickers s
+WHERE sk.keyword_id = k.id
+      AND sk.sticker_id = s.id
+      and s.file_id = $1
+      and k.keyword ILIKE ANY ($2);`
+	result, err := db.Exec(query, stickerFileId, pq.Array(keywords))
 	checkErr(err)
 
 	numRows, err := result.RowsAffected()
