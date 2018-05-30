@@ -102,6 +102,7 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 }
 
 func cleanKeywords(queryString string) string {
+	queryString = strings.ToLower(queryString)
 	queryString = strings.TrimSpace(queryString)
 	queryString = strings.Trim(queryString, " ,:.-")
 
@@ -281,13 +282,11 @@ func GetUserState(chatId int64) (usersStickerId string, usersMode string) {
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
-	keywords := cleanKeywords(strings.ToLower(message.Text))
-
-	return addKeywordsToSticker(stickerFileId, keywords)
+	return addKeywordsToSticker(stickerFileId, message.Text)
 }
 
 func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
-	keywords := strings.Split(keywordsString, " ")
+	keywords := strings.Split(cleanKeywords(keywordsString), " ")
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
 	defer db.Close()
@@ -328,7 +327,7 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 
 	var keywordsAdded int64
 	for _, keyword := range keywords {
-
+		keyword = strings.TrimSpace(keyword)
 		keywordsResultRows, err := insertKeywordsStatement.Query(keyword)
 		checkErr(err)
 
