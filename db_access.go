@@ -74,8 +74,6 @@ ON CONFLICT (chat_id)
   DO UPDATE set mode = excluded.mode;`
 	_, err = db.Exec(query, chatId, userMode)
 	checkErr(err)
-
-	return
 }
 
 func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (mode string) {

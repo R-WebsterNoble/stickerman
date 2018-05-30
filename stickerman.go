@@ -13,18 +13,20 @@ func processMessage(message *Message) (responseMessage string) {
 			case "/start":
 				fallthrough
 			case "/help":
-				return "This Bot is designed to help you find Stickers.\n" +
+				return "This Bot is designed to help you find stickers.\n" +
 					"\n" +
 					"Usage:\n" +
-					"To search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
+					"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
 					"\n" +
-					"To add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add."
+					"To add new sticker and keywords to the bot, first send the sticker to this chat."
 			case "/add":
 				SetUserMode(message.Chat.ID, "add")
-				return "You are now adding keywords"
+				return "Okay, send me some keywords and I'll add them to the sticker."
 			case "/remove":
 				SetUserMode(message.Chat.ID, "remove")
-				return "You are now removing keywords from the sticker"
+				return "Okay, I'll remove keywords you send me from this sticker."
+			default:
+				return "I don't recognise this command."
 			}
 		} else {
 			return ProcessKeywordMessage(message)
@@ -33,20 +35,20 @@ func processMessage(message *Message) (responseMessage string) {
 		return ProcessStickerMessage(message)
 	}
 
-	return "I don't know how to interpret your message"
+	return "I don't know how to interpret your message."
 }
 
 func ProcessKeywordMessage(message *Message) (responseMessage string) {
 	usersStickerId, mode := GetUserState(message.Chat.ID)
 	if usersStickerId == "" {
-		responseMessage = "Send a sticker to me then I'll be able to add searchable keywords to it"
+		responseMessage = "Send a sticker to me then I'll be able to add searchable keywords to it."
 	}
 
 	switch mode {
 	case "add":
 		responseMessage = addKeywordsToSticker(usersStickerId, message.Text)
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, message.Text)
+		responseMessage = removeKeywordsFromSticker(usersStickerId, message.Text)
 	}
 
 	return responseMessage
@@ -54,7 +56,15 @@ func ProcessKeywordMessage(message *Message) (responseMessage string) {
 
 func ProcessStickerMessage(message *Message) (responseMessage string) {
 	mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
-	return "Now you are " + mode + "ing keywords to " + message.Sticker.Emoji + " sticker"
+
+	switch mode {
+	case "add":
+		responseMessage = "That's a nice sticker. Send me some keywords and I'll add them to it."
+	case "remove":
+		responseMessage = "Okay, send me some keywords to remove them from this sticker."
+	}
+
+	return responseMessage
 }
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
