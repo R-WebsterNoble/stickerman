@@ -123,7 +123,7 @@ func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAgADMAIAAs-71A59r1FSPKQrowI\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAgAD8wIAApzW5wrgLgRxhQ_BAgI\"}]}"
+	expected := "{\"method\":\"answerInlineQuery\",\"inline_query_id\":\"913797545109391540\",\"results\":[{\"type\":\"sticker\",\"id\":\"0\",\"sticker_file_id\":\"CAADAgAD8wIAApzW5wrgLgRxhQ_BAgI\"},{\"type\":\"sticker\",\"id\":\"1\",\"sticker_file_id\":\"CAADAgADMAIAAs-71A59r1FSPKQrowI\"}]}"
 	assert.Equal(t, expected, response.Body)
 }
 

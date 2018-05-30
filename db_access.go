@@ -9,14 +9,15 @@ import (
 	"github.com/adam-hanna/arrayOperations"
 )
 
-func processInlineQuery(queryString string) []string {
-	queryString = strings.Join(cleanKeywords(queryString), " ")
+func getAllStickerIdsForKeywords(keywordsString string) []string {
+	keywordsString = EscapeSql(keywordsString)
+	keywords := getKeywordsArray(keywordsString + "%")
 
-	if len(queryString) == 0 {
+	if len(keywordsString) == 0 {
 		return []string{}
 	}
 
-	queryString = EscapeSql(queryString)
+	keywordsString = EscapeSql(keywordsString)
 
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
@@ -29,8 +30,8 @@ FROM
   keywords k
   JOIN sticker_keywords sk ON sk.keyword_id = k.id
   JOIN stickers s ON sk.sticker_id = s.id
-WHERE k.keyword ILIKE ANY (string_to_array($1, ' '))
-GROUP BY k.keyword;`, queryString+"%")
+WHERE k.keyword ILIKE ANY ($1)
+GROUP BY k.keyword;`, pq.Array(keywords))
 	defer rows.Close()
 	checkErr(err)
 
@@ -102,7 +103,7 @@ func GetUserState(chatId int64) (usersStickerId string, usersMode string) {
 }
 
 func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
-	keywords := cleanKeywords(keywordsString)
+	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
 		return "No keywords to add"
@@ -179,7 +180,8 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 }
 
 func removeKeywordsFromSticker(stickerFileId string, keywordsString string) string {
-	keywords := strings.Join(cleanKeywords(keywordsString), " ")
+	keywordsString = EscapeSql(keywordsString)
+	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
 		return "No keywords to remove"
@@ -190,7 +192,7 @@ func removeKeywordsFromSticker(stickerFileId string, keywordsString string) stri
 	checkErr(err)
 	defer db.Close()
 
-	result, err := db.Exec("DELETE FROM sticker_keywords sk \nUSING keywords k, stickers s\n    WHERE sk.keyword_id = k.id\n    AND sk.sticker_id = s.id\nand s.file_id = $1\nand k.keyword ILIKE ANY (string_to_array($2, ' '));", stickerFileId, keywords)
+	result, err := db.Exec("DELETE FROM sticker_keywords sk \nUSING keywords k, stickers s\n    WHERE sk.keyword_id = k.id\n    AND sk.sticker_id = s.id\nand s.file_id = $1\nand k.keyword ILIKE ANY ($2);", stickerFileId, pq.Array(keywords))
 	checkErr(err)
 
 	numRows, err := result.RowsAffected()

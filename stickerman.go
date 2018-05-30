@@ -2,19 +2,6 @@ package main
 
 import "strings"
 
-func cleanKeywords(queryString string) []string {
-	if len(queryString) == 0 {
-		return []string{}
-	}
-
-	queryString = strings.ToLower(queryString)
-	queryString = strings.Replace(queryString, ",", " ", -1)
-	queryString = strings.Replace(queryString, ":", " ", -1)
-	queryString = strings.Replace(queryString, ".", " ", -1)
-
-	return strings.Fields(queryString)
-}
-
 func processMessage(message *Message) (responseMessage string) {
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Sticker != nil && len(message.Text) != 0 {
 		return addKeywordFromStickerReply(message)
@@ -73,4 +60,17 @@ func ProcessStickerMessage(message *Message) (responseMessage string) {
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
 	return addKeywordsToSticker(stickerFileId, message.Text)
+}
+
+func getKeywordsArray(keywordsString string) []string {
+	if len(keywordsString) == 0 {
+		return []string{}
+	}
+
+	keywordsString = strings.ToLower(keywordsString)
+	keywordsString = strings.Replace(keywordsString, ",", " ", -1)
+	keywordsString = strings.Replace(keywordsString, ":", " ", -1)
+	keywordsString = strings.Replace(keywordsString, ".", " ", -1)
+
+	return strings.Fields(keywordsString)
 }

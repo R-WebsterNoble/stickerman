@@ -19,7 +19,7 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		responseMessage := processMessage(update.Message)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
-		inlineQueryResults := processInlineQuery(update.InlineQuery.Query)
+		inlineQueryResults := getAllStickerIdsForKeywords(update.InlineQuery.Query)
 		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults)
 	}
 
