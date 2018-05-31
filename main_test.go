@@ -32,7 +32,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"This Bot is designed to help you find Stickers.\\n\\nUsage:\\nTo search for Stickers in any chat type: @DevStampsBot followed by your search keywords.\\n\\nTo add new Stickers and keywords to the bot, send the sticker to this chat then reply to the sticker with a message containing the keywords you want to add.\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"This Bot is designed to help you find stickers.\\n\\nUsage:\\nTo search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\\n\\nTo add new sticker and keywords to the bot, first send the sticker to this chat.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -42,7 +42,7 @@ func TestHandler_HandlesSticker(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"Now you are adding keywords to 👉 sticker\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"That's a nice sticker. Send me some keywords and I'll add them to it.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -174,7 +174,7 @@ func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -194,6 +194,6 @@ func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
 	response, err := main.Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it.\"}"
 	assert.Equal(t, expected, response.Body)
 }
