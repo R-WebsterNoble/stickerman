@@ -11,7 +11,7 @@ import (
 
 func getAllStickerIdsForKeywords(keywordsString string) []string {
 	keywordsString = EscapeSql(keywordsString)
-	keywords := getKeywordsArray(keywordsString + "%")
+	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywordsString) == 0 {
 		return []string{}
