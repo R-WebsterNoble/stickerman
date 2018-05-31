@@ -9,7 +9,7 @@ func processMessage(message *Message) (responseMessage string) {
 
 	if len(message.Text) != 0 {
 		if message.Text[0] == '/' {
-			switch message.Text {
+			switch strings.ToLower(message.Text) {
 			case "/start":
 				fallthrough
 			case "/help":
