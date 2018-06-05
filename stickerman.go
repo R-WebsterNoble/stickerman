@@ -56,12 +56,31 @@ func ProcessKeywordMessage(message *Message) (responseMessage string) {
 
 func ProcessStickerMessage(message *Message) (responseMessage string) {
 	mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
-
-	switch mode {
-	case "add":
-		responseMessage = "That's a nice sticker. Send me some keywords and I'll add them to it."
-	case "remove":
-		responseMessage = "Okay, send me some keywords to remove them from this sticker."
+	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID)
+	if len(keywordsOnSticker) == 0 {
+		switch mode {
+		case "add":
+			responseMessage = "That's a nice sticker. Send me some keywords and I'll add them to it."
+		case "remove":
+			responseMessage = "Okay, send me some keywords to remove them from this sticker."
+		}
+	} else {
+		switch mode {
+		case "add":
+			responseMessage = "That sticker already has the keywords:\n" +
+				"\n" +
+				strings.Join(keywordsOnSticker, "\n") +
+				"\n" +
+				"\n" +
+				"Send me some more keywords and I'll add them to it."
+		case "remove":
+			responseMessage = "That sticker has the keywords:\n" +
+				"\n" +
+				strings.Join(keywordsOnSticker, "\n") +
+				"\n" +
+				"\n" +
+				"Send me keywords that you'd like to remove."
+		}
 	}
 
 	return responseMessage

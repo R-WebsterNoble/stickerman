@@ -197,3 +197,10 @@ func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
 	expected := "{\"method\":\"sendMessage\",\"chat_id\":0,\"text\":\"Send a sticker to me then I'll be able to add searchable keywords to it.\"}"
 	assert.Equal(t, expected, response.Body)
 }
+
+func TestGetAllKeywordsForStickerFileId(t *testing.T) {
+	result := main.GetAllKeywordsForStickerFileId("CAADAgAD8wIAApzW5wrgLgRxhQ_BAgI")
+
+	assert.Equal(t, []string{"vader", "thumbs-up", "l27rgjhcmoqomg", "guhympllketj3q"}, result)
+}
+

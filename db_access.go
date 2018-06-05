@@ -62,6 +62,28 @@ GROUP BY k.keyword;
 	return allStickerFileIds
 }
 
+func GetAllKeywordsForStickerFileId(stickerFileId string) (keywords []string) {
+	connStr := os.Getenv("pgDBConnectionString")
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	query := `
+SELECT array_agg(k.keyword)
+FROM
+ keywords k
+ JOIN sticker_keywords sk ON sk.keyword_id = k.id
+ JOIN stickers s ON sk.sticker_id = s.id
+WHERE s.file_id = $1`
+
+	err = db.QueryRow(query, stickerFileId).Scan(pq.Array(&keywords))
+	if err != sql.ErrNoRows {
+		checkErr(err)
+	}
+
+	return
+}
+
 func SetUserMode(chatId int64, userMode string) {
 	connStr := os.Getenv("pgDBConnectionString")
 	db, err := sql.Open("postgres", connStr)
