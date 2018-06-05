@@ -9,7 +9,7 @@ import (
 	"github.com/adam-hanna/arrayOperations"
 )
 
-func getAllStickerIdsForKeywords(keywordsString string) []string {
+func GetAllStickerIdsForKeywords(keywordsString string) []string {
 	keywordsString = EscapeSql(keywordsString)
 	keywords := getKeywordsArray(keywordsString)
 
@@ -89,7 +89,9 @@ ON CONFLICT (chat_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING mode;`
 	err = db.QueryRow(query, chatId, usersStickerId).Scan(&mode)
-	checkErr(err)
+	if err != sql.ErrNoRows {
+		checkErr(err)
+	}
 
 	return
 }
@@ -106,15 +108,10 @@ SELECT
   mode
 FROM sessions
 WHERE chat_id = $1`
-	rows, err := db.Query(query, chatId)
-	defer rows.Close()
-	checkErr(err)
-
-	for rows.Next() {
-		rows.Scan(&usersStickerId, &usersMode)
+	err = db.QueryRow(query, chatId).Scan(&usersStickerId, &usersMode)
+	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
-	checkErr(err)
 
 	return
 }
@@ -165,32 +162,25 @@ ON CONFLICT DO NOTHING;`
 	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
 
-	stickerResultRows, err := insertStickersStatement.Query(stickerFileId)
-	defer stickerResultRows.Close()
-	checkErr(err)
 
 	var stickerId int
-	for stickerResultRows.Next() {
-		err = stickerResultRows.Scan(&stickerId)
+	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
+	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
+
 	err = insertStickersStatement.Close()
 	checkErr(err)
 
 	var keywordsAdded int64
 	for _, keyword := range keywords {
 		keyword = strings.TrimSpace(keyword)
-		keywordsResultRows, err := insertKeywordsStatement.Query(keyword)
-		checkErr(err)
 
 		var keywordId int
-		for keywordsResultRows.Next() {
-			err = keywordsResultRows.Scan(&keywordId)
+		err = insertKeywordsStatement.QueryRow(keyword).Scan(&keywordId)
+		if err != sql.ErrNoRows {
 			checkErr(err)
 		}
-		checkErr(err)
-		err = keywordsResultRows.Close()
-		checkErr(err)
 
 		stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
 		checkErr(err)
