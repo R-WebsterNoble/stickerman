@@ -2,7 +2,6 @@ package main
 
 import (
 	"strings"
-	"os"
 	"database/sql"
 	"strconv"
 	"github.com/lib/pq"
@@ -18,11 +17,6 @@ func GetAllStickerIdsForKeywords(keywordsString string) []string {
 	}
 
 	keywordsString = EscapeSql(keywordsString)
-
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 
 	query := `
 SELECT array_agg(s.file_id)
@@ -63,10 +57,6 @@ GROUP BY k.keyword;
 }
 
 func GetAllKeywordsForStickerFileId(stickerFileId string) (keywords []string) {
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 
 	query := `
 SELECT array_agg(k.keyword)
@@ -76,7 +66,7 @@ FROM
  JOIN stickers s ON sk.sticker_id = s.id
 WHERE s.file_id = $1`
 
-	err = db.QueryRow(query, stickerFileId).Scan(pq.Array(&keywords))
+	err := db.QueryRow(query, stickerFileId).Scan(pq.Array(&keywords))
 	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
@@ -85,24 +75,16 @@ WHERE s.file_id = $1`
 }
 
 func SetUserMode(chatId int64, userMode string) {
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 
 	query := `
 INSERT INTO sessions (chat_id, mode) VALUES ($1, $2)
 ON CONFLICT (chat_id)
   DO UPDATE set mode = excluded.mode;`
-	_, err = db.Exec(query, chatId, userMode)
+	_, err := db.Exec(query, chatId, userMode)
 	checkErr(err)
 }
 
 func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (mode string) {
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 
 	query := `
 INSERT INTO sessions (chat_id, file_id)
@@ -110,7 +92,7 @@ VALUES ($1, $2)
 ON CONFLICT (chat_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING mode;`
-	err = db.QueryRow(query, chatId, usersStickerId).Scan(&mode)
+	err := db.QueryRow(query, chatId, usersStickerId).Scan(&mode)
 	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
@@ -119,10 +101,6 @@ RETURNING mode;`
 }
 
 func GetUserState(chatId int64) (usersStickerId string, usersMode string) {
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 
 	query := `
 SELECT
@@ -130,7 +108,7 @@ SELECT
   mode
 FROM sessions
 WHERE chat_id = $1`
-	err = db.QueryRow(query, chatId).Scan(&usersStickerId, &usersMode)
+	err := db.QueryRow(query, chatId).Scan(&usersStickerId, &usersMode)
 	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
@@ -144,11 +122,6 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 	if len(keywords) == 0 {
 		return "No keywords to add"
 	}
-
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	defer db.Close()
-	checkErr(err)
 
 	transaction, err := db.Begin()
 	defer func() {
@@ -229,10 +202,6 @@ func removeKeywordsFromSticker(stickerFileId string, keywordsString string) stri
 		return "No keywords to remove"
 	}
 
-	connStr := os.Getenv("pgDBConnectionString")
-	db, err := sql.Open("postgres", connStr)
-	checkErr(err)
-	defer db.Close()
 	query := `
 DELETE FROM sticker_keywords sk
 USING keywords k, stickers s

@@ -7,7 +7,18 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"fmt"
 	"runtime/debug"
+	"os"
+	"database/sql"
 )
+
+var db *sql.DB
+
+func init() {
+	connStr := os.Getenv("pgDBConnectionString")
+	var err error
+	db, err = sql.Open("postgres", connStr)
+	checkErr(err)
+}
 
 func main() {
 	lambda.Start(Handler)
