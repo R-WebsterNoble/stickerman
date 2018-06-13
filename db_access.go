@@ -16,8 +16,6 @@ func GetAllStickerIdsForKeywords(keywordsString string) []string {
 		return []string{}
 	}
 
-	keywordsString = EscapeSql(keywordsString)
-
 	query := `
 SELECT array_agg(s.file_id)
 FROM
@@ -52,6 +50,10 @@ GROUP BY k.keyword;
 		}
 	}
 	checkErr(err)
+
+	if len(allStickerFileIds) > 50 {
+		allStickerFileIds = allStickerFileIds[:50]
+	}
 
 	return allStickerFileIds
 }
