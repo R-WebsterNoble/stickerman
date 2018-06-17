@@ -5,7 +5,48 @@ import (
 	"github.com/R-WebsterNoble/stickerman"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"database/sql"
 )
+
+func TestMain(m *testing.M) {
+	defer main.Shutdown()
+
+	testDbName := "stampstest"
+	adminDb := setupTestDB(testDbName)
+	defer tearDownDB(adminDb, testDbName)
+
+	exitCode := m.Run()
+
+	tearDownDB(adminDb, testDbName)
+	os.Exit(exitCode)
+}
+
+func setupTestDB(dbName string) (adminDb *sql.DB) {
+	connStr := os.Getenv("pgAdminDBConnectionString")
+
+	adminDb, err := sql.Open("postgres", connStr)
+	checkErr(err)
+
+	_, err = adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
+	checkErr(err)
+
+	_, err = adminDb.Exec("CREATE DATABASE " + dbName)
+	checkErr(err)
+
+	main.SetupDB("schema.sql")
+
+	return adminDb
+}
+
+func tearDownDB(adminDb *sql.DB, dbName string) {
+	main.CloseDb()
+	defer adminDb.Close()
+
+	_, err := adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
+	checkErr(err)
+}
+
 
 func TestHandler_HandlesUnknownMessage(t *testing.T) {
 	request := events.APIGatewayProxyRequest{Body: "{\"update_id\":457211654,\"edited_message\":{\"message_id\":64,\"from\":{\"id\":12345,\"is_bot\":false,\"first_name\":\"user\",\"username\":\"user\",\"language_code\":\"en-GB\"},\"chat\":{\"id\":12345,\"first_name\":\"user\",\"username\":\"user\",\"type\":\"private\"},\"date\":1524691085,\"edit_date\":1524693406,\"text\":\"hig\"}}"}
@@ -204,3 +245,8 @@ func TestGetAllKeywordsForStickerFileId(t *testing.T) {
 	assert.Equal(t, []string{"vader", "thumbs-up", "l27rgjhcmoqomg", "guhympllketj3q"}, result)
 }
 
+func checkErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
