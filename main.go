@@ -20,15 +20,6 @@ func init() {
 	checkErr(err)
 }
 
-func Shutdown() {
-	CloseDb()
-}
-
-func CloseDb() {
-	err := db.Close()
-	checkErr(err)
-}
-
 func main() {
 	lambda.Start(Handler)
 }

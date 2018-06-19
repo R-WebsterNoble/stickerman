@@ -6,16 +6,7 @@ import (
 	"strconv"
 	"github.com/lib/pq"
 	"github.com/adam-hanna/arrayOperations"
-	"io/ioutil"
 )
-
-func SetupDB(sqlFile string) {
-	schema, err := ioutil.ReadFile(sqlFile)
-	checkErr(err)
-
-	_, err = db.Exec(string(schema))
-	checkErr(err)
-}
 
 func GetAllStickerIdsForKeywords(keywordsString string) []string {
 	keywordsString = EscapeSql(keywordsString)
