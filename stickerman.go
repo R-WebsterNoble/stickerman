@@ -43,20 +43,20 @@ func ProcessKeywordMessage(message *Message) string {
 	if usersStickerId == "" {
 		return "Send a sticker to me then I'll be able to add searchable keywords to it."
 	}
-
+	groupId := upsertUserGroup(message.Chat.ID)
 	switch mode {
 	case "add":
-		return addKeywordsToSticker(usersStickerId, message.Text)
+		return addKeywordsToSticker(usersStickerId, message.Text, groupId)
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, message.Text)
+		return removeKeywordsFromSticker(usersStickerId, message.Text, groupId)
 	}
 
 	return ""
 }
 
 func ProcessStickerMessage(message *Message) (responseMessage string) {
-	mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
-	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID)
+	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
+	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
 		switch mode {
 		case "add":
@@ -88,7 +88,8 @@ func ProcessStickerMessage(message *Message) (responseMessage string) {
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
-	return addKeywordsToSticker(stickerFileId, message.Text)
+	groupId := upsertUserGroup(message.Chat.ID)
+	return addKeywordsToSticker(stickerFileId, message.Text, groupId)
 }
 
 func getKeywordsArray(keywordsString string) []string {

@@ -1,3 +1,5 @@
+CREATE EXTENSION "uuid-ossp";
+
 create table stickers
 (
   id      bigserial not null
@@ -18,6 +20,16 @@ create table keywords
     unique
 );
 
+create table groups
+(
+  id   bigserial                       not null
+    constraint unique_groups_id
+    unique,
+  uuid uuid default uuid_generate_v4() not null
+    constraint unique_groups_uuid
+    unique
+);
+
 create table sticker_keywords
 (
   id         bigserial not null
@@ -31,8 +43,12 @@ create table sticker_keywords
     constraint lnk_keywords_sticker_keywords
     references keywords
     on update cascade on delete cascade,
-  constraint stickerkeywords_stickerid_keywordid
-  unique (sticker_id, keyword_id)
+  group_id   bigint    not null
+    constraint lnk_groups_sticker_keywords
+    references groups (id)
+    on update cascade on delete cascade,
+  constraint stickerkeywords_stickerid_keywordid_groupid
+  unique (sticker_id, keyword_id, group_id)
 );
 
 create index index_sticker_id
@@ -43,14 +59,18 @@ create index index_keyword_id
 
 create table sessions
 (
-  id      bigserial                                      not null
+  id       bigserial                                      not null
     constraint unique_sessions_id
     primary key,
-  chat_id bigint                                         not null
+  chat_id  bigint                                         not null
     constraint unique_sessions_chat_id
     unique,
-  file_id text,
-  mode    varchar(20) default 'add' :: character varying not null
+  file_id  text,
+  mode     varchar(20) default 'add' :: character varying not null,
+  group_id bigint                                         not null
+    constraint lnk_groups_sessions
+    references groups (id)
+    on update cascade on delete cascade
 );
 
 create index index_file_id
@@ -91,4 +111,3 @@ BEGIN
                WHERE s.id = ANY (matching_sticker_ids);
 END;
 $$;
-

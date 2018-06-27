@@ -56,7 +56,7 @@ func tearDownDB(adminDb *sql.DB, dbName string) {
 	checkErr(err)
 }
 
-func setupStickerKeywords(stickerFileId string, keywords ...string) {
+func setupStickerKeywords(stickerFileId string, keywords ...string) (groupId int64) {
 	transaction, err := db.Begin()
 	defer func() {
 		err = transaction.Rollback()
@@ -66,29 +66,45 @@ func setupStickerKeywords(stickerFileId string, keywords ...string) {
 	}()
 	checkErr(err)
 
-	query := `
+	insertStickersQuery := `
 INSERT INTO stickers (file_id) VALUES ($1)
 ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
-	insertStickersStatement, err := transaction.Prepare(query)
+	insertStickersStatement, err := transaction.Prepare(insertStickersQuery)
 	defer insertStickersStatement.Close()
 	checkErr(err)
 
-	query1 := `
+	insertKeywordsQuery := `
 INSERT INTO keywords (keyword) VALUES ($1)
 ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
-	insertKeywordsStatement, err := transaction.Prepare(query1)
+	insertKeywordsStatement, err := transaction.Prepare(insertKeywordsQuery)
 	defer insertKeywordsStatement.Close()
 	checkErr(err)
 
-	query2 := `
-INSERT INTO sticker_keywords (sticker_id, keyword_id) VALUES ($1, $2)
+	insertSessionQuery := `
+          WITH inserted AS (
+            INSERT INTO groups DEFAULT VALUES RETURNING id
+          )
+          INSERT INTO sessions (chat_id, file_id, group_id) SELECT
+                                                              $1,
+                                                              $2,
+                                                              inserted.id
+                                                            from inserted
+          ON CONFLICT (chat_id)
+            DO UPDATE SET chat_id = excluded.chat_id
+          returning group_id;`
+	insertSessionStatement, err := transaction.Prepare(insertSessionQuery)
+	defer insertSessionStatement.Close()
+	checkErr(err)
+
+	insertStickersKeywordsQuery := `
+INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING
 RETURNING id;`
-	insertStickersKeywordsStatement, err := transaction.Prepare(query2)
+	insertStickersKeywordsStatement, err := transaction.Prepare(insertStickersKeywordsQuery)
 	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
 
@@ -97,6 +113,11 @@ RETURNING id;`
 	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
+
+	err = insertStickersStatement.Close()
+	checkErr(err)
+
+	err = insertSessionStatement.QueryRow(12345, stickerFileId).Scan(&groupId)
 
 	err = insertStickersStatement.Close()
 	checkErr(err)
@@ -111,7 +132,7 @@ RETURNING id;`
 		}
 		keywordIds = append(keywordIds, keywordId)
 		var thisStickerId int64
-		err := insertStickersKeywordsStatement.QueryRow(stickerId, keywordId).Scan(&thisStickerId)
+		err := insertStickersKeywordsStatement.QueryRow(stickerId, keywordId, groupId).Scan(&thisStickerId)
 		//if err != sql.ErrNoRows {
 		checkErr(err)
 		//}
@@ -120,11 +141,25 @@ RETURNING id;`
 
 	err = transaction.Commit()
 	checkErr(err)
+
+	return
 }
 
 func setupUserState(stickerFileId string, userMode string) {
-	query := `INSERT INTO sessions (chat_id, file_id, mode) VALUES (12345, $1, $2)`
-	_, err := db.Exec(query, stickerFileId, userMode)
+	query := `
+          WITH inserted AS (
+            INSERT INTO groups DEFAULT VALUES RETURNING id
+          )
+          INSERT INTO sessions (chat_id, file_id, mode, group_id) SELECT
+                                                              $1,
+                                                              $2,
+															  $3,
+                                                              inserted.id
+                                                            from inserted
+          ON CONFLICT (chat_id)
+            DO UPDATE SET chat_id = excluded.chat_id
+          returning group_id;`
+	_, err := db.Exec(query, 12345, stickerFileId, userMode)
 	checkErr(err)
 }
 
@@ -137,7 +172,21 @@ func cleanUpDb() {
 	_, err = db.Exec(stickersCleanupQuery)
 	checkErr(err)
 
-	userStateCleanupQuery := `DELETE FROM sessions WHERE chat_id = 12345`
+	groupsCleanupQuery := `DELETE FROM groups g USING sessions s WHERE s.group_id = g.id and s.chat_id in (0, 12345)`
+	_, err = db.Exec(groupsCleanupQuery)
+	checkErr(err)
+
+	orphanedGroupsCleanupQuery := `  
+      DELETE from groups g
+      where not exists
+      (select 1
+       from sessions s
+       where s.group_id = g.id
+      );`
+	_, err = db.Exec(orphanedGroupsCleanupQuery)
+	checkErr(err)
+
+	userStateCleanupQuery := `DELETE FROM sessions WHERE chat_id IN ( 0, 12345)`
 	_, err = db.Exec(userStateCleanupQuery)
 	checkErr(err)
 }
@@ -246,8 +295,8 @@ func TestHandler_HandlesInlineQueryWithResult(t *testing.T) {
 
 func TestHandler_HandlesInlineQueryWithSQLI(t *testing.T) {
 	defer cleanUpDb()
-	setupStickerKeywords("StickerFileId", "'''")
-	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"` + "'''" + `","offset":""}}`}
+	setupStickerKeywords("StickerFileId", "keyword'''")
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"` + "keyword'''" + `","offset":""}}`}
 
 	response, err := Handler(request)
 
@@ -295,7 +344,7 @@ func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
 }
 
 func TestHandler_HandlesInlineQueryMatchesAllKeywordsWithCompletion(t *testing.T) {
-	t.Skip("skipping test: Completion is broken")
+	t.Skip("skipping: Completion is broken")
 
 	defer cleanUpDb()
 	setupStickerKeywords("StickerFileId", "keyword-completed")
@@ -340,14 +389,15 @@ func TestHandler_GetUserState_GetsInvalidUserState(t *testing.T) {
 
 func TestHandler_SetUserState_SetsUserState(t *testing.T) {
 	defer cleanUpDb()
-	resultMode := SetUserStickerAndGetMode(1, "test")
+	groupId, resultMode := SetUserStickerAndGetMode(12345, "StickerFileId")
 
 	assert.Equal(t, "add", resultMode)
+	assert.NotNil(t, groupId)
 }
 
 func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 	defer cleanUpDb()
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":0,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":0,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"hi"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":0,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":0,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
 
 	response, err := Handler(request)
 
@@ -359,7 +409,7 @@ func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 func TestHandler_HandlesKeywordState(t *testing.T) {
 	defer cleanUpDb()
 	setupUserState("StickerFileId", "add")
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"hi"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
 
 	response, err := Handler(request)
 
@@ -371,21 +421,126 @@ func TestHandler_HandlesKeywordState(t *testing.T) {
 func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
 	defer cleanUpDb()
 	setupUserState("StickerFileId", "remove")
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"hi"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
 
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 0 keywords."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 0 keyword(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
 func TestGetAllKeywordsForStickerFileId(t *testing.T) {
 	defer cleanUpDb()
-	setupStickerKeywords("StickerFileId", "keyword1", "keyword2")
+	groupId := setupStickerKeywords("StickerFileId", "keyword1", "keyword2")
 
-	result := GetAllKeywordsForStickerFileId("StickerFileId")
+	result := GetAllKeywordsForStickerFileId("StickerFileId", groupId)
 
 	sort.Strings(result)
 	assert.Equal(t, []string{"keyword1", "keyword2"}, result)
+}
+
+func TestGetUserGroup_GetsANewGroup(t *testing.T) {
+	defer cleanUpDb()
+
+	result := upsertUserGroup(12345)
+
+	assert.NotEqual(t, 0, result)
+}
+
+func TestGetUserGroup_GetsAnExistingGroup(t *testing.T) {
+	defer cleanUpDb()
+	groupId := upsertUserGroup(12345)
+
+	result := upsertUserGroup(12345)
+
+	assert.Equal(t, groupId, result)
+}
+
+func TestHandler_HandlesInlineQueryDoesNotGetStickersFromOtherGroup(t *testing.T) {
+	defer cleanUpDb()
+	setupStickerKeywords("StickerFileId", "keyword")
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":0,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"keyword","offset":""}}`}
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[]}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesAddingKeywordToStickerFromSession(t *testing.T) {
+	defer cleanUpDb()
+	stickerRequest := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"keyword"}}`}
+	_, err := Handler(stickerRequest)
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 keyword(s)."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
+	defer cleanUpDb()
+	setupStickerKeywords("StickerFileId", "keyword")
+	setRemoveRequest := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/remove"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"keyword"}}`}
+	_, err := Handler(setRemoveRequest)
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 keyword(s)."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesUserWithNoStickerInSession(t *testing.T) {
+	defer cleanUpDb()
+
+	query := `
+          WITH inserted AS (
+            INSERT INTO groups DEFAULT VALUES RETURNING id
+          )
+          INSERT INTO sessions (chat_id, group_id) SELECT
+                                                              $1,                                                            
+                                                              inserted.id
+                                                            from inserted
+          ON CONFLICT (chat_id)
+            DO UPDATE SET chat_id = excluded.chat_id
+          returning group_id;`
+	_, err := db.Exec(query, 12345)
+	checkErr(err)
+
+	usersStickerId, usersMode := GetUserState(12345)
+
+	assert.Equal(t, "", usersStickerId)
+	assert.Equal(t, "add", usersMode)
+}
+
+func TestHandler_HandlesUserWithNoStickerIhfghnSession(t *testing.T) {
+	defer cleanUpDb()
+
+	query := `
+         WITH inserted AS (
+           INSERT INTO groups DEFAULT VALUES RETURNING id
+         )
+         INSERT INTO sessions (chat_id, group_id) SELECT
+                                                             $1,
+                                                             inserted.id
+                                                           from inserted
+         ON CONFLICT (chat_id)
+           DO UPDATE SET chat_id = excluded.chat_id
+         returning group_id;`
+	_, err := db.Exec(query, 12345)
+	checkErr(err)
+
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
+
+	response, err := Handler(request)
+	checkErr(err)
+
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
+	assert.Equal(t, expected, response.Body)
 }

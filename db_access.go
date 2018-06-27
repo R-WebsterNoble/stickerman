@@ -8,7 +8,7 @@ import (
 	"github.com/adam-hanna/arrayOperations"
 )
 
-func GetAllStickerIdsForKeywords(keywordsString string) []string {
+func GetAllStickerIdsForKeywords(keywordsString string, groupId int64) []string {
 	keywordsString = EscapeSql(keywordsString)
 	keywords := getKeywordsArray(keywordsString)
 
@@ -22,10 +22,11 @@ FROM
   keywords k
   JOIN sticker_keywords sk ON sk.keyword_id = k.id
   JOIN stickers s ON sk.sticker_id = s.id
-WHERE k.keyword ILIKE ANY ($1)
+WHERE sk.group_id = $1
+AND k.keyword ILIKE ANY ($2)
 GROUP BY k.keyword;
 `
-	rows, err := db.Query(query, pq.Array(keywords))
+	rows, err := db.Query(query, groupId, pq.Array(keywords))
 	defer rows.Close()
 	checkErr(err)
 
@@ -58,7 +59,7 @@ GROUP BY k.keyword;
 	return allStickerFileIds
 }
 
-func GetAllKeywordsForStickerFileId(stickerFileId string) (keywords []string) {
+func GetAllKeywordsForStickerFileId(stickerFileId string, groupId int64) (keywords []string) {
 
 	query := `
 SELECT array_agg(k.keyword)
@@ -66,9 +67,11 @@ FROM
  keywords k
  JOIN sticker_keywords sk ON sk.keyword_id = k.id
  JOIN stickers s ON sk.sticker_id = s.id
-WHERE s.file_id = $1`
+WHERE sk.group_id = $1 
+AND s.file_id = $2
+`
 
-	err := db.QueryRow(query, stickerFileId).Scan(pq.Array(&keywords))
+	err := db.QueryRow(query, groupId, stickerFileId).Scan(pq.Array(&keywords))
 	if err != sql.ErrNoRows {
 		checkErr(err)
 	}
@@ -76,29 +79,63 @@ WHERE s.file_id = $1`
 	return
 }
 
-func SetUserMode(chatId int64, userMode string) {
+func SetUserMode(chatId int64, mode string) {
+	var groupId int64
+	groupIdQuery := `SELECT group_id FROM sessions WHERE chat_id = $1;`
+	err := db.QueryRow(groupIdQuery, chatId).Scan(&groupId)
+
+	if err == sql.ErrNoRows {
+		insertQuery := `
+          WITH inserted AS (
+            INSERT INTO groups DEFAULT VALUES RETURNING id
+          )
+          INSERT INTO sessions (chat_id, group_id, mode) SELECT
+                                                              $1,
+                                                              inserted.id,
+															  $2
+                                                            from inserted
+          ON CONFLICT (chat_id)
+            DO UPDATE SET chat_id = excluded.chat_id
+          returning group_id;`
+
+		err = db.QueryRow(insertQuery, chatId, mode).Scan(&groupId)
+		checkErr(err)
+		return
+	}
+	checkErr(err)
 
 	query := `
-INSERT INTO sessions (chat_id, mode) VALUES ($1, $2)
+INSERT INTO sessions (chat_id, group_id, mode) VALUES ($1, $2, $3)
 ON CONFLICT (chat_id)
   DO UPDATE set mode = excluded.mode;`
-	_, err := db.Exec(query, chatId, userMode)
+	_, err = db.Exec(query, chatId, groupId, mode)
 	checkErr(err)
+
+	return
 }
 
-func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (mode string) {
+func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (groupId int64, mode string) {
+	selectQuery := `SELECT group_id, mode FROM sessions WHERE chat_id = $1;`
 
-	query := `
-INSERT INTO sessions (chat_id, file_id)
-VALUES ($1, $2)
-ON CONFLICT (chat_id)
-  DO UPDATE set file_id = excluded.file_id
-RETURNING mode;`
-	err := db.QueryRow(query, chatId, usersStickerId).Scan(&mode)
-	if err != sql.ErrNoRows {
-		checkErr(err)
+	err := db.QueryRow(selectQuery, chatId).Scan(&groupId, &mode)
+	if err == sql.ErrNoRows {
+		insertQuery := `
+          WITH inserted AS (
+            INSERT INTO groups DEFAULT VALUES RETURNING id
+          )
+          INSERT INTO sessions (chat_id, file_id, group_id) SELECT
+                                                              $1,
+                                                              $2,
+                                                              inserted.id
+                                                            from inserted
+          ON CONFLICT (chat_id)
+            DO UPDATE SET chat_id = excluded.chat_id
+          returning group_id;`
+
+		err = db.QueryRow(insertQuery, chatId, usersStickerId).Scan(&groupId)
+		mode = "add" // default value
 	}
-
+	checkErr(err)
 	return
 }
 
@@ -123,7 +160,7 @@ WHERE chat_id = $1`
 	return
 }
 
-func addKeywordsToSticker(stickerFileId string, keywordsString string) (responseMessage string) {
+func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId int64) (responseMessage string) {
 	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
@@ -139,31 +176,30 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string) (response
 	}()
 	checkErr(err)
 
-	query := `
+	stickerQuery := `
 INSERT INTO stickers (file_id) VALUES ($1)
 ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
-	insertStickersStatement, err := transaction.Prepare(query)
+	insertStickersStatement, err := transaction.Prepare(stickerQuery)
 	defer insertStickersStatement.Close()
 	checkErr(err)
 
-	query1 := `
+	keywordQuery := `
 INSERT INTO keywords (keyword) VALUES ($1)
 ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
-	insertKeywordsStatement, err := transaction.Prepare(query1)
+	insertKeywordsStatement, err := transaction.Prepare(keywordQuery)
 	defer insertKeywordsStatement.Close()
 	checkErr(err)
 
-	query2 := `
-INSERT INTO sticker_keywords (sticker_id, keyword_id) VALUES ($1, $2)
+	stickerKeywordQuery := `
+INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING;`
-	insertStickersKeywordsStatement, err := transaction.Prepare(query2)
+	insertStickersKeywordsStatement, err := transaction.Prepare(stickerKeywordQuery)
 	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
-
 
 	var stickerId int
 	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
@@ -184,7 +220,7 @@ ON CONFLICT DO NOTHING;`
 			checkErr(err)
 		}
 
-		stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId)
+		stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId, groupId)
 		checkErr(err)
 
 		numRowsAffected, err := stickersKeywordsResult.RowsAffected()
@@ -201,7 +237,7 @@ ON CONFLICT DO NOTHING;`
 	return
 }
 
-func removeKeywordsFromSticker(stickerFileId string, keywordsString string) string {
+func removeKeywordsFromSticker(stickerFileId string, keywordsString string, groupId int64) string {
 	keywordsString = EscapeSql(keywordsString)
 	keywords := getKeywordsArray(keywordsString)
 
@@ -214,14 +250,40 @@ DELETE FROM sticker_keywords sk
 USING keywords k, stickers s
 WHERE sk.keyword_id = k.id
       AND sk.sticker_id = s.id
-      and s.file_id = $1
-      and k.keyword ILIKE ANY ($2);`
-	result, err := db.Exec(query, stickerFileId, pq.Array(keywords))
+      AND s.file_id = $1
+      AND sk.group_id = $3
+      AND k.keyword ILIKE ANY ($2);`
+	result, err := db.Exec(query, stickerFileId, pq.Array(keywords), groupId)
 	checkErr(err)
 
 	numRows, err := result.RowsAffected()
 
-	return "You have deleted " + strconv.FormatInt(numRows, 10) + " keywords."
+	return "You have deleted " + strconv.FormatInt(numRows, 10) + " keyword(s)."
+}
+
+func upsertUserGroup(chatId int64) (groupId int64) {
+
+	selectQuery := `SELECT group_id FROM sessions WHERE chat_id = $1;`
+
+	err := db.QueryRow(selectQuery, chatId).Scan(&groupId)
+	if err == sql.ErrNoRows {
+
+		insertQuery := `
+WITH inserted AS (
+  INSERT INTO groups DEFAULT VALUES RETURNING id
+)
+INSERT INTO sessions (chat_id, group_id) SELECT
+                                           $1,
+                                           inserted.id
+                                         from inserted
+ON CONFLICT (chat_id)
+  DO UPDATE SET chat_id = excluded.chat_id
+returning group_id;
+`
+		err = db.QueryRow(insertQuery, chatId).Scan(&groupId)
+	}
+	checkErr(err)
+	return
 }
 
 func EscapeSql(s string) (result string) {

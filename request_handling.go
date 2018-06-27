@@ -19,7 +19,8 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		responseMessage := processMessage(update.Message)
 		return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
-		inlineQueryResults := GetAllStickerIdsForKeywords(update.InlineQuery.Query)
+		groupId := upsertUserGroup(int64(update.InlineQuery.From.ID))
+		inlineQueryResults := GetAllStickerIdsForKeywords(update.InlineQuery.Query, groupId)
 		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults)
 	}
 
