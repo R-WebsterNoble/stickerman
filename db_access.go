@@ -110,9 +110,14 @@ SELECT
   mode
 FROM sessions
 WHERE chat_id = $1`
-	err := db.QueryRow(query, chatId).Scan(&usersStickerId, &usersMode)
+	var dbUsersStickerId sql.NullString
+	err := db.QueryRow(query, chatId).Scan(&dbUsersStickerId, &usersMode)
 	if err != sql.ErrNoRows {
 		checkErr(err)
+	}
+
+	if dbUsersStickerId.Valid {
+		usersStickerId = dbUsersStickerId.String
 	}
 
 	return
