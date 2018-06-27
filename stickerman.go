@@ -38,20 +38,20 @@ func processMessage(message *Message) (responseMessage string) {
 	return "I don't know how to interpret your message."
 }
 
-func ProcessKeywordMessage(message *Message) (responseMessage string) {
+func ProcessKeywordMessage(message *Message) string {
 	usersStickerId, mode := GetUserState(message.Chat.ID)
 	if usersStickerId == "" {
-		responseMessage = "Send a sticker to me then I'll be able to add searchable keywords to it."
+		return "Send a sticker to me then I'll be able to add searchable keywords to it."
 	}
 
 	switch mode {
 	case "add":
-		responseMessage = addKeywordsToSticker(usersStickerId, message.Text)
+		return addKeywordsToSticker(usersStickerId, message.Text)
 	case "remove":
-		responseMessage = removeKeywordsFromSticker(usersStickerId, message.Text)
+		return removeKeywordsFromSticker(usersStickerId, message.Text)
 	}
 
-	return responseMessage
+	return ""
 }
 
 func ProcessStickerMessage(message *Message) (responseMessage string) {
