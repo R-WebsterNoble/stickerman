@@ -114,11 +114,12 @@ ON CONFLICT (chat_id)
 	return
 }
 
+
 func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (groupId int64, mode string) {
 	selectQuery := `SELECT group_id, mode FROM sessions WHERE chat_id = $1;`
 
-	err := db.QueryRow(selectQuery, chatId).Scan(&groupId, &mode)
-	if err == sql.ErrNoRows {
+	dbErr := db.QueryRow(selectQuery, chatId).Scan(&groupId, &mode)
+	if dbErr == sql.ErrNoRows {
 		insertQuery := `
           WITH inserted AS (
             INSERT INTO groups DEFAULT VALUES RETURNING id
@@ -132,10 +133,18 @@ func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (groupId int6
             DO UPDATE SET chat_id = excluded.chat_id
           returning group_id;`
 
-		err = db.QueryRow(insertQuery, chatId, usersStickerId).Scan(&groupId)
+		dbErr = db.QueryRow(insertQuery, chatId, usersStickerId).Scan(&groupId)
 		mode = "add" // default value
+		return
 	}
-	checkErr(err)
+
+	query := `
+	UPDATE sessions
+	SET file_id = $1
+	WHERE chat_id = $2
+	`
+	_, dbErr = db.Exec(query, usersStickerId, chatId)
+	checkErr(dbErr)
 	return
 }
 

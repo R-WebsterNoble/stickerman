@@ -395,6 +395,29 @@ func TestHandler_SetUserState_SetsUserState(t *testing.T) {
 	assert.NotNil(t, groupId)
 }
 
+func TestHandler_SetUserState_SetsUserStateWithExistingState(t *testing.T) {
+	defer cleanUpDb()
+	SetUserStickerAndGetMode(12345, "StickerFileId1")
+	SetUserStickerAndGetMode(12345, "StickerFileId2")
+
+	var resultStickerId string
+	var resultMode string
+	query := `
+        SELECT
+          file_id,
+          mode
+        FROM sessions
+        WHERE chat_id = 12345`
+
+	err := db.QueryRow(query).Scan(&resultStickerId, &resultMode)
+	if err != sql.ErrNoRows {
+		checkErr(err)
+	}
+
+	assert.Equal(t, "StickerFileId2", resultStickerId)
+	assert.Equal(t, "add", resultMode)
+}
+
 func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 	defer cleanUpDb()
 	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":0,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":0,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
@@ -504,13 +527,13 @@ func TestHandler_HandlesUserWithNoStickerInSession(t *testing.T) {
             INSERT INTO groups DEFAULT VALUES RETURNING id
           )
           INSERT INTO sessions (chat_id, group_id) SELECT
-                                                              $1,                                                            
+                                                              12345,                                                            
                                                               inserted.id
                                                             from inserted
           ON CONFLICT (chat_id)
             DO UPDATE SET chat_id = excluded.chat_id
           returning group_id;`
-	_, err := db.Exec(query, 12345)
+	_, err := db.Exec(query)
 	checkErr(err)
 
 	usersStickerId, usersMode := GetUserState(12345)
@@ -519,7 +542,7 @@ func TestHandler_HandlesUserWithNoStickerInSession(t *testing.T) {
 	assert.Equal(t, "add", usersMode)
 }
 
-func TestHandler_HandlesUserWithNoStickerIhfghnSession(t *testing.T) {
+func TestHandler_HandlesDoesNotAddKeywordsWhenUserHasNoStickerIdInSession(t *testing.T) {
 	defer cleanUpDb()
 
 	query := `
@@ -527,13 +550,13 @@ func TestHandler_HandlesUserWithNoStickerIhfghnSession(t *testing.T) {
            INSERT INTO groups DEFAULT VALUES RETURNING id
          )
          INSERT INTO sessions (chat_id, group_id) SELECT
-                                                             $1,
+                                                             12345,
                                                              inserted.id
                                                            from inserted
          ON CONFLICT (chat_id)
            DO UPDATE SET chat_id = excluded.chat_id
          returning group_id;`
-	_, err := db.Exec(query, 12345)
+	_, err := db.Exec(query)
 	checkErr(err)
 
 	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":900,"from":{"id":12345,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`}
