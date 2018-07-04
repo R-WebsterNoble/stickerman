@@ -98,9 +98,6 @@ func getKeywordsArray(keywordsString string) []string {
 	}
 
 	keywordsString = strings.ToLower(keywordsString)
-	keywordsString = strings.Replace(keywordsString, ",", " ", -1)
-	keywordsString = strings.Replace(keywordsString, ":", " ", -1)
-	keywordsString = strings.Replace(keywordsString, ".", " ", -1)
 
 	return strings.Fields(keywordsString)
 }
