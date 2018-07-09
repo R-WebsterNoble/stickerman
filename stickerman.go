@@ -18,7 +18,7 @@ func processMessage(message *Message) (responseMessage string) {
 					"Usage:\n" +
 					"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
 					"\n" +
-					"To add new sticker and keywords to the bot, first send the sticker to this chat."
+					"To add a new sticker and keywords to the bot, first send the sticker to this chat."
 			case "/add":
 				SetUserMode(message.Chat.ID, "add")
 				return "Okay, send me some keywords and I'll add them to the sticker."
