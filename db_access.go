@@ -79,8 +79,7 @@ AND s.file_id = $2
 	return
 }
 
-func SetUserMode(chatId int64, mode string) {
-	var groupId int64
+func setUserMode(chatId int64, mode string) (groupId int64, usersStickerId string) {
 	groupIdQuery := `SELECT group_id FROM sessions WHERE chat_id = $1;`
 	err := db.QueryRow(groupIdQuery, chatId).Scan(&groupId)
 
@@ -107,8 +106,9 @@ func SetUserMode(chatId int64, mode string) {
 	query := `
 INSERT INTO sessions (chat_id, group_id, mode) VALUES ($1, $2, $3)
 ON CONFLICT (chat_id)
-  DO UPDATE set mode = excluded.mode;`
-	_, err = db.Exec(query, chatId, groupId, mode)
+  DO UPDATE set mode = excluded.mode
+  RETURNING file_id;`
+	err = db.QueryRow(query, chatId, groupId, mode).Scan(&usersStickerId)
 	checkErr(err)
 
 	return
@@ -270,7 +270,7 @@ WHERE sk.keyword_id = k.id
 	return "You have deleted " + strconv.FormatInt(numRows, 10) + " keyword(s)."
 }
 
-func upsertUserGroup(chatId int64) (groupId int64) {
+func getOrCreateUserGroup(chatId int64) (groupId int64) {
 
 	selectQuery := `SELECT group_id FROM sessions WHERE chat_id = $1;`
 

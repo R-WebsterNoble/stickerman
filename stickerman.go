@@ -9,52 +9,74 @@ func processMessage(message *Message) (responseMessage string) {
 
 	if len(message.Text) != 0 {
 		if message.Text[0] == '/' {
-			switch strings.ToLower(message.Text) {
-			case "/start":
-				fallthrough
-			case "/help":
-				return "This Bot is designed to help you find stickers.\n" +
-					"\n" +
-					"Usage:\n" +
-					"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
-					"\n" +
-					"To add a new sticker and keywords to the bot, first send the sticker to this chat."
-			case "/add":
-				SetUserMode(message.Chat.ID, "add")
-				return "Okay, send me some keywords and I'll add them to the sticker."
-			case "/remove":
-				SetUserMode(message.Chat.ID, "remove")
-				return "Okay, I'll remove keywords you send me from this sticker."
-			default:
-				return "I don't recognise this command."
-			}
+			return processCommand(message)
 		} else {
-			return ProcessKeywordMessage(message)
+			return processKeywordMessage(message.Chat.ID, message.Text)
 		}
 	} else if message.Sticker != nil {
-		return ProcessStickerMessage(message)
+		return processStickerMessage(message)
 	}
 
 	return "I don't know how to interpret your message."
 }
 
-func ProcessKeywordMessage(message *Message) string {
-	usersStickerId, mode := GetUserState(message.Chat.ID)
+func processCommand(message *Message) (responseMessage string) {
+	switch strings.ToLower(message.Text) {
+	case "/start":
+		fallthrough
+	case "/help":
+		return "This Bot is designed to help you find stickers.\n" +
+			"\n" +
+			"Usage:\n" +
+			"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
+			"\n" +
+			"To add a new sticker and keywords to the bot, first send the sticker to this chat."
+	case "/add":
+		setUserMode(message.Chat.ID, "add")
+		return "Okay, send me some keywords and I'll add them to the sticker."
+	case "/remove":
+		setUserMode(message.Chat.ID, "remove")
+		return "Okay, I'll remove keywords you send me from this sticker."
+	default:
+		return processOtherCommand(message)
+	}
+}
+
+func processOtherCommand(message *Message) string {
+	if strings.HasPrefix(message.Text, "/add ") {
+		groupId, usersStickerId := setUserMode(message.Chat.ID, "add")
+		if usersStickerId == "" {
+			return "Send a sticker to me then I'll be able to add searchable keywords to it."
+		}
+		keywordsText := message.Text[5:]
+		return "You and now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+	} else if strings.HasPrefix(message.Text, "/remove ") {
+		usersStickerId, _ := GetUserState(message.Chat.ID)
+		groupId := getOrCreateUserGroup(message.Chat.ID)
+		keywordsText := message.Text[8:]
+		return removeKeywordsFromSticker(usersStickerId, keywordsText, groupId)
+	} else {
+		return "I don't recognise this command."
+	}
+}
+
+func processKeywordMessage(chatId int64, messageText string) string {
+	usersStickerId, mode := GetUserState(chatId)
 	if usersStickerId == "" {
 		return "Send a sticker to me then I'll be able to add searchable keywords to it."
 	}
-	groupId := upsertUserGroup(message.Chat.ID)
+	groupId := getOrCreateUserGroup(chatId)
 	switch mode {
 	case "add":
-		return addKeywordsToSticker(usersStickerId, message.Text, groupId)
+		return addKeywordsToSticker(usersStickerId, messageText, groupId)
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, message.Text, groupId)
+		return removeKeywordsFromSticker(usersStickerId, messageText, groupId)
 	}
 
 	return ""
 }
 
-func ProcessStickerMessage(message *Message) string {
+func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
@@ -88,7 +110,7 @@ func ProcessStickerMessage(message *Message) string {
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
-	groupId := upsertUserGroup(message.Chat.ID)
+	groupId := getOrCreateUserGroup(message.Chat.ID)
 	return addKeywordsToSticker(stickerFileId, message.Text, groupId)
 }
 

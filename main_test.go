@@ -466,16 +466,16 @@ func TestGetAllKeywordsForStickerFileId(t *testing.T) {
 func TestGetUserGroup_GetsANewGroup(t *testing.T) {
 	defer cleanUpDb()
 
-	result := upsertUserGroup(12345)
+	result := getOrCreateUserGroup(12345)
 
 	assert.NotEqual(t, 0, result)
 }
 
 func TestGetUserGroup_GetsAnExistingGroup(t *testing.T) {
 	defer cleanUpDb()
-	groupId := upsertUserGroup(12345)
+	groupId := getOrCreateUserGroup(12345)
 
-	result := upsertUserGroup(12345)
+	result := getOrCreateUserGroup(12345)
 
 	assert.Equal(t, groupId, result)
 }
@@ -516,6 +516,26 @@ func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
 
 	assert.IsType(t, err, nil)
 	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 keyword(s)."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesAddCommand(t *testing.T) {
+	defer cleanUpDb()
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/add"}}`}
+
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Okay, send me some keywords and I'll add them to the sticker."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesAddCommandWithKeywordButNoSession(t *testing.T) {
+	defer cleanUpDb()
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/add keyword"}}`}
+
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -565,5 +585,37 @@ func TestHandler_HandlesDoesNotAddKeywordsWhenUserHasNoStickerIdInSession(t *tes
 	checkErr(err)
 
 	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesAddCommandWithKeyword(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/add keyword"}}`}
+
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You and now in add .\nAdded 1 keyword(s)."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesAddCommandWithRemove(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+	setupStickerKeywords("StickerFileId", "keyword")
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/remove keyword"}}`}
+
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 keyword(s)."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesInvalidCommand(t *testing.T) {
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/blah"}}`}
+
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"I don't recognise this command."}`
 	assert.Equal(t, expected, response.Body)
 }
