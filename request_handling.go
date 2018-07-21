@@ -20,8 +20,14 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
 		groupId := getOrCreateUserGroup(int64(update.InlineQuery.From.ID))
-		inlineQueryResults := GetAllStickerIdsForKeywords(update.InlineQuery.Query, groupId)
-		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults)
+		var offset int
+		if update.InlineQuery.Offset != "" {
+			var err error
+			offset, err = strconv.Atoi(update.InlineQuery.Offset)
+			checkErr(err)
+		}
+		inlineQueryResults, nextOffset := GetAllStickerIdsForKeywords(update.InlineQuery.Query, groupId, offset)
+		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
 	}
 
 	errorMessage := "unable to process request: neither message or update found"
@@ -41,9 +47,10 @@ type AnswerCallbackQuery struct {
 	Results       []InlineQueryResultCachedSticker `json:"results"`
 	CacheTime     int                              `json:"cache_time"`
 	IsPersonal    bool                             `json:"is_personal"`
+	NextOffset    string                           `json:"next_offset"`
 }
 
-func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) events.APIGatewayProxyResponse {
+func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, nextOffset int) events.APIGatewayProxyResponse {
 	queryResultStickers := make([]InlineQueryResultCachedSticker, len(queryResultStickerIds))
 	for i, stickerId := range queryResultStickerIds {
 		queryResultStickers[i] = InlineQueryResultCachedSticker{
@@ -53,12 +60,19 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 		}
 	}
 
+	var nextOffsetString string
+
+	if nextOffset > 0 {
+		nextOffsetString = strconv.Itoa(nextOffset)
+	}
+
 	response := AnswerCallbackQuery{
 		"answerInlineQuery",
 		inlineQueryID,
 		queryResultStickers[:],
 		0,
 		true,
+		nextOffsetString,
 	}
 
 	jsonResult, err := json.Marshal(response)

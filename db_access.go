@@ -7,7 +7,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func GetAllStickerIdsForKeywords(keywordsString string, groupId int64) []string {
+func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset int) (allStickerFileIds []string, nextOffset int) {
 	keywordsString = EscapeSql(keywordsString)
 	keywordsString = keywordsString + "%"
 	keywords := getKeywordsArray(keywordsString)
@@ -33,8 +33,14 @@ SELECT array(`)
 	INTERSECT ALL`)
 		}
 	}
-	queryBuilder.WriteString(`
-	limit 50)`)
+
+	if offset == 0 {
+		queryBuilder.WriteString(`
+	limit 51)`)
+	} else {
+		queryBuilder.WriteString(`
+	limit 51 OFFSET ` + strconv.Itoa(offset) + `)`)
+	}
 
 	query := queryBuilder.String()
 
@@ -44,11 +50,15 @@ SELECT array(`)
 		parameters[i+1] = keyword
 	}
 
-	var allStickerFileIds []string
 	err := db.QueryRow(query, parameters...).Scan(pq.Array(&allStickerFileIds))
 	checkErr(err)
 
-	return allStickerFileIds
+	if len(allStickerFileIds) > 50 {
+		allStickerFileIds = allStickerFileIds[:50]
+		nextOffset = offset + 50
+	}
+
+	return
 }
 
 func GetAllKeywordsForStickerFileId(stickerFileId string, groupId int64) (keywords []string) {
