@@ -216,12 +216,13 @@ func TestHandler_HandlesMessage(t *testing.T) {
 
 	assert.IsType(t, err, nil)
 	expected := `{"method":"sendMessage","chat_id":12345,"text":"` +
-		"This Bot is designed to help you find stickers.\\n" +
+		"Hi, I'm Sticker Manager Bot.\\n" +
+		"I'll help you manage your stickers by letting you tag them so you can easily find them later.\\n" +
 		"\\n" +
 		"Usage:\\n" +
-		"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\\n" +
+		"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\\n" +
 		"\\n" +
-		"To add a new sticker and keywords to the bot, first send the sticker to this chat." + `"}`
+		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers you are looking for.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -232,7 +233,7 @@ func TestHandler_HandlesSticker(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"That's a nice sticker. Send me some keywords and I'll add them to it."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"That's a nice sticker. Send me some tags and I'll add them to it."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -243,7 +244,7 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -255,7 +256,7 @@ func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 0 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 0 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -266,7 +267,7 @@ func TestHandler_HandlesStickerReplyWithMultipleKeywords(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 2 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 2 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -425,7 +426,7 @@ func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":0,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
+	expected := `{"method":"sendMessage","chat_id":0,"text":"Send a sticker to me then I'll be able to add tags to it."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -437,7 +438,7 @@ func TestHandler_HandlesKeywordState(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -449,7 +450,7 @@ func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 0 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 0 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -501,7 +502,7 @@ func TestHandler_HandlesAddingKeywordToStickerFromSession(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -515,7 +516,7 @@ func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -525,7 +526,7 @@ func TestHandler_HandlesAddCommand(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Okay, send me some keywords and I'll add them to the sticker."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Okay, send me some tags and I'll add them to the sticker."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -535,7 +536,7 @@ func TestHandler_HandlesAddCommandWithKeywordButNoSession(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add tags to it."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -584,7 +585,7 @@ func TestHandler_HandlesDoesNotAddKeywordsWhenUserHasNoStickerIdInSession(t *tes
 	response, err := Handler(request)
 	checkErr(err)
 
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add searchable keywords to it."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Send a sticker to me then I'll be able to add tags to it."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -595,7 +596,7 @@ func TestHandler_HandlesAddCommandWithKeyword(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You and now in add mode.\nAdded 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You are now in add mode.\nAdded 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -607,7 +608,7 @@ func TestHandler_HandlesAddCommandWithRemove(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tag(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 

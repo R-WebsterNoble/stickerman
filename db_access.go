@@ -172,7 +172,7 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId i
 	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
-		return "No keywords to add"
+		return "No tags to add"
 	}
 
 	transaction, err := db.Begin()
@@ -237,7 +237,7 @@ ON CONFLICT DO NOTHING;`
 		keywordsAdded += numRowsAffected
 	}
 
-	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " keyword(s)."
+	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " tag(s)."
 
 	err = transaction.Commit()
 	checkErr(err)
@@ -250,7 +250,7 @@ func removeKeywordsFromSticker(stickerFileId string, keywordsString string, grou
 	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
-		return "No keywords to remove"
+		return "No tags to remove"
 	}
 
 	query := `
@@ -266,7 +266,7 @@ WHERE sk.keyword_id = k.id
 
 	numRows, err := result.RowsAffected()
 
-	return "You have deleted " + strconv.FormatInt(numRows, 10) + " keyword(s)."
+	return "You have deleted " + strconv.FormatInt(numRows, 10) + " tag(s)."
 }
 
 func getOrCreateUserGroup(chatId int64) (groupId int64) {

@@ -25,18 +25,19 @@ func processCommand(message *Message) (responseMessage string) {
 	case "/start":
 		fallthrough
 	case "/help":
-		return "This Bot is designed to help you find stickers.\n" +
+		return "Hi, I'm Sticker Manager Bot.\n" +
+			"I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
 			"\n" +
 			"Usage:\n" +
-			"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\n" +
+			"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
 			"\n" +
-			"To add a new sticker and keywords to the bot, first send the sticker to this chat."
+			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers you are looking for."
 	case "/add":
 		setUserMode(message.Chat.ID, "add")
-		return "Okay, send me some keywords and I'll add them to the sticker."
+		return "Okay, send me some tags and I'll add them to the sticker."
 	case "/remove":
 		setUserMode(message.Chat.ID, "remove")
-		return "Okay, I'll remove keywords you send me from this sticker."
+		return "Okay, I'll remove tags you send me from this sticker."
 	default:
 		return processOtherCommand(message)
 	}
@@ -46,10 +47,10 @@ func processOtherCommand(message *Message) string {
 	if strings.HasPrefix(message.Text, "/add ") {
 		groupId, usersStickerId := setUserMode(message.Chat.ID, "add")
 		if usersStickerId == "" {
-			return "Send a sticker to me then I'll be able to add searchable keywords to it."
+			return "Send a sticker to me then I'll be able to add tags to it."
 		}
 		keywordsText := message.Text[5:]
-		return "You and now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+		return "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
 	} else if strings.HasPrefix(message.Text, "/remove ") {
 		usersStickerId, _ := GetUserState(message.Chat.ID)
 		groupId := getOrCreateUserGroup(message.Chat.ID)
@@ -63,7 +64,7 @@ func processOtherCommand(message *Message) string {
 func processKeywordMessage(chatId int64, messageText string) string {
 	usersStickerId, mode := GetUserState(chatId)
 	if usersStickerId == "" {
-		return "Send a sticker to me then I'll be able to add searchable keywords to it."
+		return "Send a sticker to me then I'll be able to add tags to it."
 	}
 	groupId := getOrCreateUserGroup(chatId)
 	switch mode {
@@ -82,26 +83,26 @@ func processStickerMessage(message *Message) string {
 	if len(keywordsOnSticker) == 0 {
 		switch mode {
 		case "add":
-			return "That's a nice sticker. Send me some keywords and I'll add them to it."
+			return "That's a nice sticker. Send me some tags and I'll add them to it."
 		case "remove":
-			return "Okay, send me some keywords to remove them from this sticker."
+			return "Okay, send me some tags to remove them from this sticker."
 		}
 	} else {
 		switch mode {
 		case "add":
-			return "That sticker already has the keywords:\n" +
+			return "That sticker already has the tags:\n" +
 				"\n" +
 				strings.Join(keywordsOnSticker, "\n") +
 				"\n" +
 				"\n" +
-				"Send me some more keywords and I'll add them to it."
+				"Send me some more tags and I'll add them to it."
 		case "remove":
-			return "That sticker has the keywords:\n" +
+			return "That sticker has the tags:\n" +
 				"\n" +
 				strings.Join(keywordsOnSticker, "\n") +
 				"\n" +
 				"\n" +
-				"Send me keywords that you'd like to remove."
+				"Send me tags that you'd like to remove."
 		}
 	}
 
