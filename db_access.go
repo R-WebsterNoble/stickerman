@@ -114,7 +114,6 @@ ON CONFLICT (chat_id)
 	return
 }
 
-
 func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (groupId int64, mode string) {
 	selectQuery := `SELECT group_id, mode FROM sessions WHERE chat_id = $1;`
 

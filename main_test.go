@@ -277,7 +277,7 @@ func TestHandler_HandlesEmptyInlineQuery(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -289,7 +289,7 @@ func TestHandler_HandlesInlineQueryWithResult(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -301,7 +301,7 @@ func TestHandler_HandlesInlineQueryWithSQLI(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -314,7 +314,7 @@ func TestHandler_HandlesInlineQueryWithMultipleResults(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId2"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId2"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -326,7 +326,7 @@ func TestHandler_HandlesInlineQueryWithMultipleKeywords(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -339,7 +339,7 @@ func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -353,7 +353,7 @@ func TestHandler_HandlesInlineQueryMatchesAllKeywordsWithCompletion(t *testing.T
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -365,7 +365,7 @@ func TestHandler_HandlesInlineQueryEscapesWildcards(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -488,7 +488,7 @@ func TestHandler_HandlesInlineQueryDoesNotGetStickersFromOtherGroup(t *testing.T
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[]}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[],"cache_time":0,"is_personal":true}`
 	assert.Equal(t, expected, response.Body)
 }
 

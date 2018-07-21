@@ -39,6 +39,8 @@ type AnswerCallbackQuery struct {
 	Method        string                           `json:"method"`
 	InlineQueryId string                           `json:"inline_query_id"`
 	Results       []InlineQueryResultCachedSticker `json:"results"`
+	CacheTime     int                              `json:"cache_time"`
+	IsPersonal    bool                             `json:"is_personal"`
 }
 
 func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) events.APIGatewayProxyResponse {
@@ -55,6 +57,8 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string) e
 		"answerInlineQuery",
 		inlineQueryID,
 		queryResultStickers[:],
+		0,
+		true,
 	}
 
 	jsonResult, err := json.Marshal(response)
