@@ -221,7 +221,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 		"Usage:\\n" +
 		"To search for a stickers in any chat type: @DevStampsBot followed by your search keywords.\\n" +
 		"\\n" +
-		"To add new sticker and keywords to the bot, first send the sticker to this chat." + `"}`
+		"To add a new sticker and keywords to the bot, first send the sticker to this chat." + `"}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -595,7 +595,7 @@ func TestHandler_HandlesAddCommandWithKeyword(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You and now in add .\nAdded 1 keyword(s)."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You and now in add mode.\nAdded 1 keyword(s)."}`
 	assert.Equal(t, expected, response.Body)
 }
 
