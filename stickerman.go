@@ -124,3 +124,11 @@ func getKeywordsArray(keywordsString string) []string {
 
 	return strings.Fields(keywordsString)
 }
+
+func pluralise(word string, count int64) string {
+	if count == 1 {
+		return word
+	} else {
+		return word + "s"
+	}
+}

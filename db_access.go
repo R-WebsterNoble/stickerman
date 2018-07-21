@@ -237,7 +237,7 @@ ON CONFLICT DO NOTHING;`
 		keywordsAdded += numRowsAffected
 	}
 
-	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " tag(s)."
+	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " " + pluralise("tag", keywordsAdded) + "."
 
 	err = transaction.Commit()
 	checkErr(err)
@@ -266,7 +266,7 @@ WHERE sk.keyword_id = k.id
 
 	numRows, err := result.RowsAffected()
 
-	return "You have deleted " + strconv.FormatInt(numRows, 10) + " tag(s)."
+	return "You have deleted " + strconv.FormatInt(numRows, 10) + " " + pluralise("tag", numRows) + "."
 }
 
 func getOrCreateUserGroup(chatId int64) (groupId int64) {
