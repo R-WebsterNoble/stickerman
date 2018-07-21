@@ -345,8 +345,6 @@ func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
 }
 
 func TestHandler_HandlesInlineQueryMatchesAllKeywordsWithCompletion(t *testing.T) {
-	t.Skip("skipping: Completion is broken")
-
 	defer cleanUpDb()
 	setupStickerKeywords("StickerFileId", "keyword-completed")
 	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":""}}`}
@@ -516,7 +514,7 @@ func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tags."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tag."}`
 	assert.Equal(t, expected, response.Body)
 }
 

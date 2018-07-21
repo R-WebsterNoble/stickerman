@@ -5,56 +5,48 @@ import (
 	"database/sql"
 	"strconv"
 	"github.com/lib/pq"
-	"github.com/adam-hanna/arrayOperations"
 )
 
 func GetAllStickerIdsForKeywords(keywordsString string, groupId int64) []string {
 	keywordsString = EscapeSql(keywordsString)
+	keywordsString = keywordsString + "%"
 	keywords := getKeywordsArray(keywordsString)
 
-	if len(keywordsString) == 0 {
-		return []string{}
-	}
+	keywordCount := len(keywords)
 
-	query := `
-SELECT array_agg(s.file_id)
-FROM
-  keywords k
-  JOIN sticker_keywords sk ON sk.keyword_id = k.id
-  JOIN stickers s ON sk.sticker_id = s.id
-WHERE sk.group_id = $1
-AND k.keyword ILIKE ANY ($2)
-GROUP BY k.keyword;
-`
-	rows, err := db.Query(query, groupId, pq.Array(keywords))
-	defer rows.Close()
-	checkErr(err)
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString(`
+SELECT array(`)
 
-	var allStickerFileIds []string
-	if rows.Next() {
-		rows.Scan(pq.Array(&allStickerFileIds))
-		checkErr(err)
-		for rows.Next() {
-			var fileIdsForKeyword []string
-			rows.Scan(pq.Array(&fileIdsForKeyword))
-			checkErr(err)
-
-			intersectionResult, ok := arrayOperations.Intersect(allStickerFileIds, fileIdsForKeyword)
-			if !ok {
-				return allStickerFileIds
-			}
-
-			allStickerFileIds, ok = intersectionResult.Interface().([]string)
-			if !ok {
-				return allStickerFileIds
-			}
+	for i := 1; i <= keywordCount; i++ {
+		query := `
+	SELECT DISTINCT s.file_id
+	FROM
+	  	keywords k
+	  	JOIN sticker_keywords sk ON sk.keyword_id = k.id
+	  	JOIN stickers s ON sk.sticker_id = s.id
+	WHERE sk.group_id = $1
+	      AND k.keyword ILIKE $` + strconv.Itoa(i+1)
+		queryBuilder.WriteString(query)
+		if i != keywordCount {
+			queryBuilder.WriteString(`
+	INTERSECT ALL`)
 		}
 	}
-	checkErr(err)
+	queryBuilder.WriteString(`
+	limit 50)`)
 
-	if len(allStickerFileIds) > 50 {
-		allStickerFileIds = allStickerFileIds[:50]
+	query := queryBuilder.String()
+
+	parameters := make([]interface{}, keywordCount+1)
+	parameters[0] = groupId
+	for i, keyword := range keywords {
+		parameters[i+1] = keyword
 	}
+
+	var allStickerFileIds []string
+	err := db.QueryRow(query, parameters...).Scan(pq.Array(&allStickerFileIds))
+	checkErr(err)
 
 	return allStickerFileIds
 }
