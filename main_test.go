@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sort"
+	"strconv"
 )
 
 func TestMain(m *testing.M) {
@@ -315,7 +316,7 @@ func TestHandler_HandlesInlineQueryWithMultipleResults(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId2"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId2"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId1"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, response.Body)
 }
 
@@ -616,5 +617,47 @@ func TestHandler_HandlesInvalidCommand(t *testing.T) {
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
 	expected := `{"method":"sendMessage","chat_id":12345,"text":"I don't recognise this command."}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_InlineQueryResultsAreMostRecentFirst(t *testing.T) {
+	defer cleanUpDb()
+	setupStickerKeywords("StickerFileId1", "keyword")
+	setupStickerKeywords("StickerFileId2", "keyword")
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":""}}`}
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId2"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId1"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	assert.Equal(t, expected, response.Body)
+
+	cleanUpDb()
+
+	setupStickerKeywords("StickerFileId2", "keyword")
+	setupStickerKeywords("StickerFileId1", "keyword")
+	request = events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":""}}`}
+
+	response, err = Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected = `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId1"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId2"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	assert.Equal(t, expected, response.Body)
+
+}
+
+
+func TestHandler_HandlesInlineQueryWithPagination(t *testing.T) {
+	defer cleanUpDb()
+	for i:=0; i<51; i++ {
+		setupStickerKeywords("StickerFileId" + strconv.Itoa(i), "keyword")
+	}
+
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":"50"}}`}
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId0"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, response.Body)
 }

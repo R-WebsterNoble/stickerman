@@ -16,31 +16,44 @@ func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset in
 
 	var queryBuilder strings.Builder
 	queryBuilder.WriteString(`
-SELECT array(`)
+SELECT ARRAY(
+    SELECT f.file_id
+    FROM (
+        SELECT
+            i.file_id,
+            MAX(i.id),
+            row_number()
+            OVER (
+            ORDER BY MAX(i.id) DESC ) AS rn
+        FROM
+            (`)
 
 	for i := 1; i <= keywordCount; i++ {
 		query := `
-	SELECT DISTINCT s.file_id
-	FROM
-	  	keywords k
-	  	JOIN sticker_keywords sk ON sk.keyword_id = k.id
-	  	JOIN stickers s ON sk.sticker_id = s.id
-	WHERE sk.group_id = $1
-	      AND k.keyword ILIKE $` + strconv.Itoa(i+1)
+            SELECT
+                s.file_id,
+                sk.id
+            FROM keywords k
+                JOIN sticker_keywords sk ON sk.keyword_id = k.id
+                JOIN stickers s ON sk.sticker_id = s.id
+            WHERE sk.group_id = $1
+                    AND k.keyword ILIKE $` + strconv.Itoa(i+1)
 		queryBuilder.WriteString(query)
 		if i != keywordCount {
 			queryBuilder.WriteString(`
-	INTERSECT ALL`)
+                UNION`)
 		}
 	}
 
-	if offset == 0 {
-		queryBuilder.WriteString(`
-	limit 51)`)
-	} else {
-		queryBuilder.WriteString(`
-	limit 51 OFFSET ` + strconv.Itoa(offset) + `)`)
-	}
+	queryBuilder.WriteString(`
+            ) i
+        GROUP BY i.file_id
+        ORDER by MAX(i.id) DESC
+        LIMIT 50
+        OFFSET ` + strconv.Itoa(offset) + `
+        ) AS f
+    ORDER BY f.rn
+);`)
 
 	query := queryBuilder.String()
 
