@@ -34,13 +34,11 @@ SELECT array(`)
 		}
 	}
 
-	if offset == 0 {
-		queryBuilder.WriteString(`
-	limit 51)`)
-	} else {
-		queryBuilder.WriteString(`
-	limit 51 OFFSET ` + strconv.Itoa(offset) + `)`)
-	}
+	queryBuilder.WriteString(`
+	ORDER BY file_id	
+	LIMIT 51
+	OFFSET ` + strconv.Itoa(offset) + `
+)`)
 
 	query := queryBuilder.String()
 
