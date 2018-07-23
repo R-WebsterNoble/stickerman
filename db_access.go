@@ -15,30 +15,52 @@ func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset in
 	keywordCount := len(keywords)
 
 	var queryBuilder strings.Builder
-	queryBuilder.WriteString(`
-SELECT array(`)
+	queryBuilder.WriteString(`SELECT ARRAY(
+    SELECT r.fid
+    FROM (
+           SELECT
+             k1.fid,
+             MAX(k1.skid),
+             row_number()
+             OVER ( ORDER BY MAX(k1.skid) DESC ) AS rn
+           FROM
+             (
+               SELECT
+                 s.id      AS sid,
+                 s.file_id AS fid,
+                 sk.id     AS skid
+               FROM keywords k
+                 JOIN sticker_keywords sk ON sk.keyword_id = k.id
+                 JOIN stickers s ON sk.sticker_id = s.id
+               WHERE sk.group_id = $1
+                     AND k.keyword ILIKE $2
+             ) k1`)
 
-	for i := 1; i <= keywordCount; i++ {
-		query := `
-	SELECT DISTINCT s.file_id
-	FROM
-	  	keywords k
-	  	JOIN sticker_keywords sk ON sk.keyword_id = k.id
-	  	JOIN stickers s ON sk.sticker_id = s.id
-	WHERE sk.group_id = $1
-	      AND k.keyword ILIKE $` + strconv.Itoa(i+1)
-		queryBuilder.WriteString(query)
-		if i != keywordCount {
-			queryBuilder.WriteString(`
-	INTERSECT ALL`)
-		}
+	for i := 1; i < keywordCount; i++ {
+		iStr := strconv.Itoa(i + 1)
+		queryBuilder.WriteString(`
+             JOIN
+             (
+               SELECT
+                 s.id as sid` + iStr + `,
+                 s.file_id,
+                 sk.id
+               FROM keywords k
+                 JOIN sticker_keywords sk ON sk.keyword_id = k.id
+                 JOIN stickers s ON sk.sticker_id = s.id
+               WHERE sk.group_id = $1
+                     AND k.keyword ILIKE $` + strconv.Itoa(i+2) + `
+             ) k` + iStr + ` ON k1.sid = k` + iStr + `.sid` + iStr)
 	}
 
 	queryBuilder.WriteString(`
-	ORDER BY file_id	
-	LIMIT 51
-	OFFSET ` + strconv.Itoa(offset) + `
-)`)
+           GROUP BY k1.fid
+           ORDER by MAX(k1.skid) DESC
+           LIMIT 51
+           OFFSET ` + strconv.Itoa(offset) + `
+         ) AS r
+    ORDER BY r.rn
+);`)
 
 	query := queryBuilder.String()
 
