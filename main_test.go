@@ -334,9 +334,9 @@ func TestHandler_HandlesInlineQueryWithMultipleKeywords(t *testing.T) {
 
 func TestHandler_HandlesInlineQueryMatchesAllKeywords(t *testing.T) {
 	defer cleanUpDb()
-	setupStickerKeywords("StickerFileId1", "keyword1", "keyword2")
+	setupStickerKeywords("StickerFileId1", "keyword1", "keyword2", "keyword3")
 	setupStickerKeywords("StickerFileId2", "keyword1", "keyword0")
-	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"keyword1 keyword2","offset":""}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"keyword1 keyword2 keyword3","offset":""}}`}
 
 	response, err := Handler(request)
 
@@ -653,11 +653,19 @@ func TestHandler_HandlesInlineQueryWithPagination(t *testing.T) {
 		setupStickerKeywords("StickerFileId" + strconv.Itoa(i), "keyword")
 	}
 
-	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":"50"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":""}}`}
 
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId0"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId50"},{"type":"sticker","id":"1","sticker_file_id":"StickerFileId49"},{"type":"sticker","id":"2","sticker_file_id":"StickerFileId48"},{"type":"sticker","id":"3","sticker_file_id":"StickerFileId47"},{"type":"sticker","id":"4","sticker_file_id":"StickerFileId46"},{"type":"sticker","id":"5","sticker_file_id":"StickerFileId45"},{"type":"sticker","id":"6","sticker_file_id":"StickerFileId44"},{"type":"sticker","id":"7","sticker_file_id":"StickerFileId43"},{"type":"sticker","id":"8","sticker_file_id":"StickerFileId42"},{"type":"sticker","id":"9","sticker_file_id":"StickerFileId41"},{"type":"sticker","id":"10","sticker_file_id":"StickerFileId40"},{"type":"sticker","id":"11","sticker_file_id":"StickerFileId39"},{"type":"sticker","id":"12","sticker_file_id":"StickerFileId38"},{"type":"sticker","id":"13","sticker_file_id":"StickerFileId37"},{"type":"sticker","id":"14","sticker_file_id":"StickerFileId36"},{"type":"sticker","id":"15","sticker_file_id":"StickerFileId35"},{"type":"sticker","id":"16","sticker_file_id":"StickerFileId34"},{"type":"sticker","id":"17","sticker_file_id":"StickerFileId33"},{"type":"sticker","id":"18","sticker_file_id":"StickerFileId32"},{"type":"sticker","id":"19","sticker_file_id":"StickerFileId31"},{"type":"sticker","id":"20","sticker_file_id":"StickerFileId30"},{"type":"sticker","id":"21","sticker_file_id":"StickerFileId29"},{"type":"sticker","id":"22","sticker_file_id":"StickerFileId28"},{"type":"sticker","id":"23","sticker_file_id":"StickerFileId27"},{"type":"sticker","id":"24","sticker_file_id":"StickerFileId26"},{"type":"sticker","id":"25","sticker_file_id":"StickerFileId25"},{"type":"sticker","id":"26","sticker_file_id":"StickerFileId24"},{"type":"sticker","id":"27","sticker_file_id":"StickerFileId23"},{"type":"sticker","id":"28","sticker_file_id":"StickerFileId22"},{"type":"sticker","id":"29","sticker_file_id":"StickerFileId21"},{"type":"sticker","id":"30","sticker_file_id":"StickerFileId20"},{"type":"sticker","id":"31","sticker_file_id":"StickerFileId19"},{"type":"sticker","id":"32","sticker_file_id":"StickerFileId18"},{"type":"sticker","id":"33","sticker_file_id":"StickerFileId17"},{"type":"sticker","id":"34","sticker_file_id":"StickerFileId16"},{"type":"sticker","id":"35","sticker_file_id":"StickerFileId15"},{"type":"sticker","id":"36","sticker_file_id":"StickerFileId14"},{"type":"sticker","id":"37","sticker_file_id":"StickerFileId13"},{"type":"sticker","id":"38","sticker_file_id":"StickerFileId12"},{"type":"sticker","id":"39","sticker_file_id":"StickerFileId11"},{"type":"sticker","id":"40","sticker_file_id":"StickerFileId10"},{"type":"sticker","id":"41","sticker_file_id":"StickerFileId9"},{"type":"sticker","id":"42","sticker_file_id":"StickerFileId8"},{"type":"sticker","id":"43","sticker_file_id":"StickerFileId7"},{"type":"sticker","id":"44","sticker_file_id":"StickerFileId6"},{"type":"sticker","id":"45","sticker_file_id":"StickerFileId5"},{"type":"sticker","id":"46","sticker_file_id":"StickerFileId4"},{"type":"sticker","id":"47","sticker_file_id":"StickerFileId3"},{"type":"sticker","id":"48","sticker_file_id":"StickerFileId2"},{"type":"sticker","id":"49","sticker_file_id":"StickerFileId1"}],"cache_time":0,"is_personal":true,"next_offset":"50"}`
+	assert.Equal(t, expected, response.Body)
+
+	request = events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":"50"}}`}
+
+	response, err = Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected = `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId0"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, response.Body)
 }
