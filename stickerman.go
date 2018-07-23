@@ -122,7 +122,27 @@ func getKeywordsArray(keywordsString string) []string {
 
 	keywordsString = strings.ToLower(keywordsString)
 
-	return strings.Fields(keywordsString)
+	allKeywords := strings.Fields(keywordsString)
+
+	uniqueKeywords := unique(allKeywords)
+
+	if len(uniqueKeywords) > 10 { // anti DOS
+		return uniqueKeywords[:10]
+	}
+
+	return uniqueKeywords
+}
+
+func unique(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	var list []string
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 func pluralise(word string, count int64) string {
