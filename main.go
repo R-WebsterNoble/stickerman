@@ -1,14 +1,13 @@
 package main
 
 import (
-	"log"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"fmt"
 	"runtime/debug"
 	"os"
 	"database/sql"
+	"strings"
 )
 
 var db *sql.DB
@@ -33,11 +32,11 @@ func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayP
 		}
 	}()
 
-	log.Println("Request Body: ", request.Body)
+	fmt.Println(`{"request_body":` + strings.Replace(request.Body, "\n", "", -1) + `}`)
 
 	response = ProcessRequest(request)
 
-	log.Println("Responce Body: ", response.Body)
+	fmt.Println(`{"response_body":` + strings.Replace(response.Body, "\n", "", -1) + `}`)
 
 	return response, nil
 }
