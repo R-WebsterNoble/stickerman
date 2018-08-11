@@ -30,7 +30,7 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
 	}
 
-	errorMessage := "unable to process request: neither message or update found"
+	errorMessage := "unable to process request: neither message nor update found"
 	log.Println(errorMessage)
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 }

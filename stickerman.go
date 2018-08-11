@@ -31,7 +31,7 @@ func processCommand(message *Message) (responseMessage string) {
 			"Usage:\n" +
 			"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
 			"\n" +
-			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers you are looking for."
+			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
 	case "/add":
 		setUserMode(message.Chat.ID, "add")
 		return "Okay, send me some tags and I'll add them to the sticker."

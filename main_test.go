@@ -198,7 +198,7 @@ func TestHandler_HandlesUnknownMessage(t *testing.T) {
 	response, err := Handler(request)
 
 	assert.IsType(t, err, nil)
-	assert.Equal(t, "unable to process request: neither message or update found", response.Body)
+	assert.Equal(t, "unable to process request: neither message nor update found", response.Body)
 }
 
 func TestHandler_HandlesInvalidJson(t *testing.T) {
@@ -223,7 +223,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 		"Usage:\\n" +
 		"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\\n" +
 		"\\n" +
-		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers you are looking for.\"}"
+		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\"}"
 	assert.Equal(t, expected, response.Body)
 }
 
