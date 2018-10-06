@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"strings"
 )
 
 var db *sql.DB
@@ -19,7 +20,9 @@ func init() {
 }
 
 func main() {
-	http.HandleFunc("/", handler)
+	telegramBotApiKey := os.Getenv("TelegramBotApiKey")
+	telegramBotApiKey = strings.Replace(telegramBotApiKey, ":", "", -1)
+	http.HandleFunc("/"+telegramBotApiKey, handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
 
