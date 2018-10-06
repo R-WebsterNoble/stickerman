@@ -1,15 +1,15 @@
 package main
 
 import (
-	"testing"
-	"os"
 	"database/sql"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"strings"
+	"os"
 	"sort"
 	"strconv"
+	"strings"
+	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -229,7 +229,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 
 func TestHandler_HandlesSticker(t *testing.T) {
 	defer cleanUpDb()
-	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
 
 	response, err := Handler(request)
 
@@ -240,7 +240,7 @@ func TestHandler_HandlesSticker(t *testing.T) {
 
 func TestHandler_HandlesStickerReply(t *testing.T) {
 	defer cleanUpDb()
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword"}}`}
 
 	response, err := Handler(request)
 
@@ -252,7 +252,7 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 	defer cleanUpDb()
 	setupStickerKeywords("StickerFileId", "keyword")
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"Keyword"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"Keyword"}}`}
 
 	response, err := Handler(request)
 
@@ -263,7 +263,7 @@ func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 
 func TestHandler_HandlesStickerReplyWithMultipleKeywords(t *testing.T) {
 	defer cleanUpDb()
-	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword1 keyword2"}}`}
+	request := events.APIGatewayProxyRequest{Body: `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword1 keyword2"}}`}
 
 	response, err := Handler(request)
 
@@ -494,7 +494,7 @@ func TestHandler_HandlesInlineQueryDoesNotGetStickersFromOtherGroup(t *testing.T
 
 func TestHandler_HandlesAddingKeywordToStickerFromSession(t *testing.T) {
 	defer cleanUpDb()
-	stickerRequest := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
+	stickerRequest := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
 	request := events.APIGatewayProxyRequest{Body: `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"keyword"}}`}
 	_, err := Handler(stickerRequest)
 
@@ -666,5 +666,20 @@ func TestHandler_HandlesInlineQueryWithPagination(t *testing.T) {
 
 	assert.IsType(t, err, nil)
 	expected = `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId0"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	assert.Equal(t, expected, response.Body)
+}
+
+func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
+	defer cleanUpDb()
+	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
+
+	Handler(request)
+
+	request = events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"VaultBoySet Fallout-Vault-Boy Fallout Vault Boy 😂","offset":""}}`}
+
+	response, err := Handler(request)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"CAADAQADrwgAAr-MkARNRpJexr9oegI"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, response.Body)
 }

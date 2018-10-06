@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
 	"database/sql"
-	"strconv"
 	"github.com/lib/pq"
+	"strconv"
+	"strings"
 )
 
 func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset int) (allStickerFileIds []string, nextOffset int) {
@@ -157,6 +157,8 @@ func SetUserStickerAndGetMode(chatId int64, usersStickerId string) (groupId int6
 		dbErr = db.QueryRow(insertQuery, chatId, usersStickerId).Scan(&groupId)
 		mode = "add" // default value
 		return
+	} else {
+		checkErr(dbErr)
 	}
 
 	query := `
@@ -189,10 +191,12 @@ WHERE chat_id = $1`
 
 	return
 }
-
 func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId int64) (responseMessage string) {
-	keywords := getKeywordsArray(keywordsString)
+	keywordsArray := getKeywordsArray(keywordsString)
+	return addKeywordsArrayToSticker(stickerFileId, keywordsArray, groupId)
+}
 
+func addKeywordsArrayToSticker(stickerFileId string, keywords []string, groupId int64) (responseMessage string) {
 	if len(keywords) == 0 {
 		return "No tags to add"
 	}

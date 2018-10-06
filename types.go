@@ -1,9 +1,9 @@
 package main
 
 import (
-"encoding/json"
-"strings"
-"time"
+	"encoding/json"
+	"strings"
+	"time"
 )
 
 // APIResponse is a response from the Telegram API with the result
@@ -27,10 +27,10 @@ type ChatId struct {
 	Username   interface{} `json:"username"`
 }
 
-type Response struct{
-	Method string	`json:"method"`
-	ChatId int64 	`json:"chat_id"`
-	Text string		`json:"text"`
+type Response struct {
+	Method string `json:"method"`
+	ChatId int64  `json:"chat_id"`
+	Text   string `json:"text"`
 }
 
 // Update is an update response, from GetUpdates.
@@ -295,9 +295,24 @@ type Sticker struct {
 	FileID    string     `json:"file_id"`
 	Width     int        `json:"width"`
 	Height    int        `json:"height"`
-	Thumbnail *PhotoSize `json:"thumb"`     // optional
-	Emoji     string     `json:"emoji"`     // optional
-	FileSize  int        `json:"file_size"` // optional
+	Thumbnail *PhotoSize `json:"thumb"` // optional
+	Emoji     string     `json:"emoji"` // optional
+	FileSize  int        `json:"file_size"`
+	SetName   string     `json:"set_name"`
+	// optional
+}
+
+// Stickers contains information about a sticker pack.
+type Stickers struct {
+	Name          string    `json:"name"`
+	Title         string    `json:"title"`
+	ContainsMasks bool      `json:"contains_masks"`
+	Stickers      []Sticker `json:"stickers"`
+}
+
+type GetStickerSetResult struct {
+	Ok     bool     `json:"ok"`
+	Result Stickers `json:"result"`
 }
 
 // Video contains information about a video.

@@ -1,6 +1,13 @@
 package main
 
-import "strings"
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+)
 
 func processMessage(message *Message) (responseMessage string) {
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Sticker != nil && len(message.Text) != 0 {
@@ -81,12 +88,19 @@ func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		switch mode {
-		case "add":
-			return "That's a nice sticker. Send me some tags and I'll add them to it."
-		case "remove":
-			return "Okay, send me some tags to remove them from this sticker."
+		safeSetName := url.QueryEscape(message.Sticker.SetName)
+		getStickerSetUrl := "https://api.telegram.org/bot" + os.Getenv("TelegramBotApiKey") + "/getStickerSet?name=" + safeSetName
+		stickerSetResult := callGetStickerSetApi(getStickerSetUrl)
+		if stickerSetResult.Ok {
+			setTitleWords := strings.Fields(stickerSetResult.Result.Title)
+			keywordsArray := []string{message.Sticker.SetName, strings.Join(setTitleWords, "-")}
+			keywordsArray = append(keywordsArray, setTitleWords...)
+			for _, sticker := range stickerSetResult.Result.Stickers {
+				keywordsArrayWithEmoji := append(keywordsArray, sticker.Emoji)
+				addKeywordsArrayToSticker(sticker.FileID, keywordsArrayWithEmoji, groupId)
+			}
 		}
+		return "That's a nice sticker. Send me some tags and I'll add them to it."
 	} else {
 		switch mode {
 		case "add":
@@ -105,8 +119,32 @@ func processStickerMessage(message *Message) string {
 				"Send me tags that you'd like to remove."
 		}
 	}
-
 	return ""
+}
+
+func callGetStickerSetApi(url string) GetStickerSetResult {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("error in http.NewRequest", err)
+		return GetStickerSetResult{false, Stickers{}}
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("error in client.Do", err)
+		return GetStickerSetResult{false, Stickers{}}
+	}
+	defer resp.Body.Close()
+
+	var stickers GetStickerSetResult
+	err = json.NewDecoder(resp.Body).Decode(&stickers)
+	if err != nil {
+		fmt.Println("error decoding json", err)
+		return GetStickerSetResult{false, Stickers{}}
+	}
+
+	return stickers
 }
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
