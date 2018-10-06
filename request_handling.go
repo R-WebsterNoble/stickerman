@@ -1,23 +1,29 @@
 package main
 
 import (
-	"log"
 	"encoding/json"
-	"github.com/aws/aws-lambda-go/events"
+	"io"
+	"log"
+	"net/http"
 	"strconv"
 )
 
-func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIGatewayProxyResponse) {
+func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 	var update Update
-	if err := json.Unmarshal([]byte(request.Body), &update);
+	if err := json.NewDecoder(request.Body).Decode(&update);
 		err != nil {
 		errorMessage := "error while Unmarshaling"
 		log.Println(errorMessage, err)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
+		//return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
+		http.Error(responseWriter, errorMessage, http.StatusBadRequest)
+		return
 	}
 	if update.Message != nil {
 		responseMessage := processMessage(update.Message)
-		return textMessageResponse(update.Message.Chat.ID, responseMessage)
+		responseString := textMessageResponse(update.Message.Chat.ID, responseMessage)
+		io.WriteString(responseWriter, responseString)
+		return
+		//return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
 		groupId := getOrCreateUserGroup(int64(update.InlineQuery.From.ID))
 		var offset int
@@ -27,12 +33,16 @@ func ProcessRequest(request events.APIGatewayProxyRequest) (response events.APIG
 			checkErr(err)
 		}
 		inlineQueryResults, nextOffset := GetAllStickerIdsForKeywords(update.InlineQuery.Query, groupId, offset)
-		return inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
+		responseMessage := inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
+		io.WriteString(responseWriter, responseMessage)
+		return
 	}
 
 	errorMessage := "unable to process request: neither message nor update found"
 	log.Println(errorMessage)
-	return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
+	http.Error(responseWriter, errorMessage, http.StatusBadRequest)
+	return
+	//return events.APIGatewayProxyResponse{StatusCode: 200, Body: errorMessage}
 }
 
 type InlineQueryResultCachedSticker struct {
@@ -50,7 +60,7 @@ type AnswerCallbackQuery struct {
 	NextOffset    string                           `json:"next_offset"`
 }
 
-func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, nextOffset int) events.APIGatewayProxyResponse {
+func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, nextOffset int) string {
 	queryResultStickers := make([]InlineQueryResultCachedSticker, len(queryResultStickerIds))
 	for i, stickerId := range queryResultStickerIds {
 		queryResultStickers[i] = InlineQueryResultCachedSticker{
@@ -80,16 +90,17 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, n
 		panic(err)
 	}
 
-	jsonString := string(jsonResult)
-	return events.APIGatewayProxyResponse{
-		StatusCode:      200,
-		Headers:         map[string]string{"Content-Type": "application/json"},
-		Body:            jsonString,
-		IsBase64Encoded: false,
-	}
+	return string(jsonResult)
+	//jsonString := string(jsonResult)
+	//return events.APIGatewayProxyResponse{
+	//	StatusCode:      200,
+	//	Headers:         map[string]string{"Content-Type": "application/json"},
+	//	Body:            jsonString,
+	//	IsBase64Encoded: false,
+	//}
 }
 
-func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyResponse) {
+func textMessageResponse(chatId int64, text string) string {
 	response := Response{
 		"sendMessage",
 		chatId,
@@ -98,10 +109,12 @@ func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyRespo
 
 	jsonString, _ := json.Marshal(response)
 
-	return events.APIGatewayProxyResponse{
-		StatusCode:      200,
-		Headers:         map[string]string{"Content-Type": "application/json"},
-		Body:            string(jsonString),
-		IsBase64Encoded: false,
-	}
+	return string(jsonString)
+
+	//return events.APIGatewayProxyResponse{
+	//	StatusCode:      200,
+	//	Headers:         map[string]string{"Content-Type": "application/json"},
+	//	Body:            string(jsonString),
+	//	IsBase64Encoded: false,
+	//}
 }

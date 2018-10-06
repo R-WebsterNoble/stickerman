@@ -1,13 +1,12 @@
 package main
 
 import (
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	"fmt"
-	"runtime/debug"
-	"os"
 	"database/sql"
-	"strings"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"runtime/debug"
 )
 
 var db *sql.DB
@@ -20,23 +19,23 @@ func init() {
 }
 
 func main() {
-	lambda.Start(Handler)
+	http.HandleFunc("/", handler)
+	log.Fatal(http.ListenAndServe(":80", nil))
 }
 
-func Handler(request events.APIGatewayProxyRequest) (response events.APIGatewayProxyResponse, err error) {
+func handler(responseWriter http.ResponseWriter, request *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			//fmt.Fprintf(os.Stderr, "Panic: %s, StackTrace: %s", r, debug.Stack())
 			fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
-			response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
+			//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
+			http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
+			return
 		}
 	}()
 
-	fmt.Println(`{"request_body":` + strings.Replace(request.Body, "\n", "", -1) + `}`)
+	//fmt.Println(`{"request_body":` + strings.Replace(request.Body., "\n", "", -1) + `}`)
+	ProcessRequest(responseWriter, request)
 
-	response = ProcessRequest(request)
-
-	fmt.Println(`{"response_body":` + strings.Replace(response.Body, "\n", "", -1) + `}`)
-
-	return response, nil
+	//fmt.Println(`{"response_body":` + strings.Replace(response.Body, "\n", "", -1) + `}`)
 }
