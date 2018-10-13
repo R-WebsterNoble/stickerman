@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"os"
@@ -131,14 +131,14 @@ func addStickerSetDefaultTags(sticker *Sticker, groupId int64) {
 func callGetStickerSetApi(url string) GetStickerSetResult {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Println("error in http.NewRequest", err)
+		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in http.NewRequest")
 		return GetStickerSetResult{false, Stickers{}}
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("error in client.Do", err)
+		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in client.Do")
 		return GetStickerSetResult{false, Stickers{}}
 	}
 	defer resp.Body.Close()
@@ -146,7 +146,7 @@ func callGetStickerSetApi(url string) GetStickerSetResult {
 	var stickers GetStickerSetResult
 	err = json.NewDecoder(resp.Body).Decode(&stickers)
 	if err != nil {
-		fmt.Println("error decoding json", err)
+		log.WithFields(log.Fields{"url": url, "error": err}).Error("error decoding json")
 		return GetStickerSetResult{false, Stickers{}}
 	}
 

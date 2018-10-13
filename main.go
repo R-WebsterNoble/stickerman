@@ -2,8 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
+	"github.com/logmatic/logmatic-go"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"runtime/debug"
@@ -14,12 +14,15 @@ var db *sql.DB
 
 func init() {
 	connStr := os.Getenv("pgDBConnectionString")
+	log.WithFields(log.Fields{"connStr": connStr}).Info("pgDBConnectionString")
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	checkErr(err)
 }
 
 func main() {
+	log.SetFormatter(&logmatic.JSONFormatter{})
+
 	telegramBotApiKey := os.Getenv("TelegramBotApiKey")
 	telegramBotApiKey = strings.Replace(telegramBotApiKey, ":", "", -1)
 	http.HandleFunc("/"+telegramBotApiKey, handler)
@@ -28,9 +31,11 @@ func main() {
 
 func handler(responseWriter http.ResponseWriter, request *http.Request) {
 	defer func() {
-		if r := recover(); r != nil {
+		if error := recover(); error != nil {
 			//fmt.Fprintf(os.Stderr, "Panic: %s, StackTrace: %s", r, debug.Stack())
-			fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
+			//fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
+			//log.Printf("Something went wrong", r)
+			log.WithFields(log.Fields{"error": error, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
 			//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
 			http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
 			return

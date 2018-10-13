@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -18,10 +18,12 @@ func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 		http.Error(responseWriter, errorMessage, http.StatusBadRequest)
 		return
 	}
+
+	log.WithFields(log.Fields{"update": update}).Info()
+
 	if update.Message != nil {
 		responseMessage := processMessage(update.Message)
-		responseString := textMessageResponse(update.Message.Chat.ID, responseMessage)
-		io.WriteString(responseWriter, responseString)
+		textMessageResponse(responseWriter, update.Message.Chat.ID, responseMessage)
 		return
 		//return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
@@ -33,8 +35,7 @@ func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 			checkErr(err)
 		}
 		inlineQueryResults, nextOffset := GetAllStickerIdsForKeywords(update.InlineQuery.Query, groupId, offset)
-		responseMessage := inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
-		io.WriteString(responseWriter, responseMessage)
+		inlineQueryResponse(responseWriter, update.InlineQuery.ID, inlineQueryResults, nextOffset)
 		return
 	} else if update.ChosenInlineResult != nil {
 		return
@@ -62,7 +63,7 @@ type AnswerCallbackQuery struct {
 	NextOffset    string                           `json:"next_offset"`
 }
 
-func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, nextOffset int) string {
+func inlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryID string, queryResultStickerIds []string, nextOffset int) {
 	queryResultStickers := make([]InlineQueryResultCachedSticker, len(queryResultStickerIds))
 	for i, stickerId := range queryResultStickerIds {
 		queryResultStickers[i] = InlineQueryResultCachedSticker{
@@ -87,12 +88,7 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, n
 		nextOffsetString,
 	}
 
-	jsonResult, err := json.Marshal(response)
-	if err != nil {
-		panic(err)
-	}
-
-	return string(jsonResult)
+	sendResponse(responseWriter, response)
 	//jsonString := string(jsonResult)
 	//return events.APIGatewayProxyResponse{
 	//	StatusCode:      200,
@@ -102,16 +98,14 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, n
 	//}
 }
 
-func textMessageResponse(chatId int64, text string) string {
+func textMessageResponse(responseWriter http.ResponseWriter, chatId int64, text string) {
 	response := Response{
 		"sendMessage",
 		chatId,
 		text,
 	}
 
-	jsonString, _ := json.Marshal(response)
-
-	return string(jsonString)
+	sendResponse(responseWriter, response)
 
 	//return events.APIGatewayProxyResponse{
 	//	StatusCode:      200,
@@ -119,4 +113,16 @@ func textMessageResponse(chatId int64, text string) string {
 	//	Body:            string(jsonString),
 	//	IsBase64Encoded: false,
 	//}
+}
+
+func sendResponse(responseWriter http.ResponseWriter, response interface{}) {
+	log.WithFields(log.Fields{"response": response}).Info()
+	jsonString, err := json.Marshal(response)
+	if err != nil {
+		panic(err)
+	}
+
+	resultString := string(jsonString)
+	log.Println(resultString)
+	io.WriteString(responseWriter, resultString)
 }
