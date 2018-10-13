@@ -23,7 +23,7 @@ func main() {
 	telegramBotApiKey := os.Getenv("TelegramBotApiKey")
 	telegramBotApiKey = strings.Replace(telegramBotApiKey, ":", "", -1)
 	http.HandleFunc("/"+telegramBotApiKey, handler)
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(":8085", middleware(http.DefaultServeMux)))
 }
 
 func handler(responseWriter http.ResponseWriter, request *http.Request) {
@@ -42,3 +42,22 @@ func handler(responseWriter http.ResponseWriter, request *http.Request) {
 
 	//fmt.Println(`{"response_body":` + strings.Replace(response.Body, "\n", "", -1) + `}`)
 }
+
+func middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
+//func logRequest(handler http.Handler) http.Handler {
+//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//		//buf := new(bytes.Buffer)
+//		//buf.ReadFrom(r.Body)
+//		//requestBody := buf.String() // Does a complete copy of the bytes in the buffer.
+//		//log.Printf("RemoteAddr:%s Method:%s URL:%s Body:%s", r.RemoteAddr, r.Method, r.URL, requestBody)
+//
+//
+//		handler.ServeHTTP(w, r)
+//	})
+//}
