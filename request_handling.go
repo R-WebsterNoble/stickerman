@@ -36,6 +36,8 @@ func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 		responseMessage := inlineQueryResponse(update.InlineQuery.ID, inlineQueryResults, nextOffset)
 		io.WriteString(responseWriter, responseMessage)
 		return
+	} else if update.ChosenInlineResult != nil {
+		return
 	}
 
 	errorMessage := "unable to process request: neither message nor update found"
