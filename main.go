@@ -31,11 +31,11 @@ func main() {
 
 func handler(responseWriter http.ResponseWriter, request *http.Request) {
 	defer func() {
-		if error := recover(); error != nil {
+		if err := recover(); err != nil {
 			//fmt.Fprintf(os.Stderr, "Panic: %s, StackTrace: %s", r, debug.Stack())
 			//fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
 			//log.Printf("Something went wrong", r)
-			log.WithFields(log.Fields{"error": error, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
+			log.WithFields(log.Fields{"err": err, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
 			//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
 			http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
 			return
