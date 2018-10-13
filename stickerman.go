@@ -88,18 +88,7 @@ func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		safeSetName := url.QueryEscape(message.Sticker.SetName)
-		getStickerSetUrl := "https://api.telegram.org/bot" + os.Getenv("TelegramBotApiKey") + "/getStickerSet?name=" + safeSetName
-		stickerSetResult := callGetStickerSetApi(getStickerSetUrl)
-		if stickerSetResult.Ok {
-			setTitleWords := strings.Fields(stickerSetResult.Result.Title)
-			keywordsArray := []string{message.Sticker.SetName, strings.Join(setTitleWords, "-")}
-			keywordsArray = append(keywordsArray, setTitleWords...)
-			for _, sticker := range stickerSetResult.Result.Stickers {
-				keywordsArrayWithEmoji := append(keywordsArray, sticker.Emoji)
-				addKeywordsArrayToSticker(sticker.FileID, keywordsArrayWithEmoji, groupId)
-			}
-		}
+		addStickerSetDefaultTags(message.Sticker, groupId)
 		return "That's a nice sticker. Send me some tags and I'll add them to it."
 	} else {
 		switch mode {
@@ -120,6 +109,23 @@ func processStickerMessage(message *Message) string {
 		}
 	}
 	return ""
+}
+
+func addStickerSetDefaultTags(sticker *Sticker, groupId int64) {
+	safeSetName := url.QueryEscape(sticker.SetName)
+	getStickerSetUrl := "https://api.telegram.org/bot" + os.Getenv("TelegramBotApiKey") + "/getStickerSet?name=" + safeSetName
+	stickerSetResult := callGetStickerSetApi(getStickerSetUrl)
+	if stickerSetResult.Ok {
+		setTitleWords := strings.Fields(stickerSetResult.Result.Title)
+		keywordsArray := []string{sticker.SetName, strings.Join(setTitleWords, "-")}
+		keywordsArray = append(keywordsArray, setTitleWords...)
+		for _, sticker := range stickerSetResult.Result.Stickers {
+			keywordsArrayWithEmoji := append(keywordsArray, sticker.Emoji)
+			addKeywordsArrayToSticker(sticker.FileID, keywordsArrayWithEmoji, groupId)
+		}
+	} else {
+
+	}
 }
 
 func callGetStickerSetApi(url string) GetStickerSetResult {
