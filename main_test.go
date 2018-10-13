@@ -470,13 +470,13 @@ func TestHandler_SetUserState_SetsUserStateWithExistingState(t *testing.T) {
 
 func TestHandler_HandlesKeywordMessageWithNoState(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"message":{"message_id":900,"from":{"id":0,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":0,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`
+	requestBody := `{"message":{"message_id":900,"from":{"id":0,"is_bot":false,"first_name":"blah","username":"blah","language_code":"en-GB"},"chat":{"id":1,"first_name":"user","username":"user","type":"private"},"date":1527633135,"text":"keyword"}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":0,"text":"Send a sticker to me then I'll be able to add tags to it."}`
+	expected := `{"method":"sendMessage","chat_id":1,"text":"Send a sticker to me then I'll be able to add tags to it."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
