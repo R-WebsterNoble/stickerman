@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
 	"database/sql"
-	"strconv"
 	"github.com/lib/pq"
+	"strconv"
+	"strings"
 )
 
 func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset int) (allStickerFileIds []string, nextOffset int) {
@@ -197,6 +197,8 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId i
 		return "No tags to add"
 	}
 
+	stickerId := getStickerId(stickerFileId)
+
 	transaction, err := db.Begin()
 	defer func() {
 		err = transaction.Rollback()
@@ -206,24 +208,6 @@ func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId i
 	}()
 	checkErr(err)
 
-	stickerQuery := `
-INSERT INTO stickers (file_id) VALUES ($1)
-ON CONFLICT (file_id)
-  DO UPDATE set file_id = excluded.file_id
-RETURNING id;`
-	insertStickersStatement, err := transaction.Prepare(stickerQuery)
-	defer insertStickersStatement.Close()
-	checkErr(err)
-
-	keywordQuery := `
-INSERT INTO keywords (keyword) VALUES ($1)
-ON CONFLICT (keyword)
-  DO UPDATE set keyword = excluded.keyword
-RETURNING id;`
-	insertKeywordsStatement, err := transaction.Prepare(keywordQuery)
-	defer insertKeywordsStatement.Close()
-	checkErr(err)
-
 	stickerKeywordQuery := `
 INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING;`
@@ -231,24 +215,11 @@ ON CONFLICT DO NOTHING;`
 	defer insertStickersKeywordsStatement.Close()
 	checkErr(err)
 
-	var stickerId int
-	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
-	if err != sql.ErrNoRows {
-		checkErr(err)
-	}
-
-	err = insertStickersStatement.Close()
-	checkErr(err)
-
 	var keywordsAdded int64
 	for _, keyword := range keywords {
 		keyword = strings.TrimSpace(keyword)
 
-		var keywordId int
-		err = insertKeywordsStatement.QueryRow(keyword).Scan(&keywordId)
-		if err != sql.ErrNoRows {
-			checkErr(err)
-		}
+		keywordId := getKeywordId(keyword)
 
 		stickersKeywordsResult, err := insertStickersKeywordsStatement.Exec(stickerId, keywordId, groupId)
 		checkErr(err)
@@ -264,6 +235,32 @@ ON CONFLICT DO NOTHING;`
 	err = transaction.Commit()
 	checkErr(err)
 
+	return
+}
+
+func getStickerId(stickerFileId string, ) (stickerId int64) {
+	selectQuery := `SELECT id FROM stickers WHERE file_id = $1;`
+	err := db.QueryRow(selectQuery, stickerFileId).Scan(&stickerId)
+	if err == sql.ErrNoRows {
+		insertQuery := `INSERT INTO stickers (file_id) VALUES ($1) ON CONFLICT DO NOTHING;`
+		_, err := db.Exec(insertQuery, stickerFileId)
+		checkErr(err)
+		return getStickerId(stickerFileId)
+	}
+	checkErr(err)
+	return
+}
+
+func getKeywordId(keywordFileId string, ) (keywordId int64) {
+	selectQuery := `SELECT id FROM keywords WHERE keyword = $1;`
+	err := db.QueryRow(selectQuery, keywordFileId).Scan(&keywordId)
+	if err == sql.ErrNoRows {
+		insertQuery := `INSERT INTO keywords (keyword) VALUES ($1) ON CONFLICT DO NOTHING;`
+		_, err := db.Exec(insertQuery, keywordFileId)
+		checkErr(err)
+		return getKeywordId(keywordFileId)
+	}
+	checkErr(err)
 	return
 }
 
