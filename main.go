@@ -38,7 +38,6 @@ func handler(responseWriter http.ResponseWriter, request *http.Request) {
 			log.WithFields(log.Fields{"err": err, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
 			//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
 			http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
-			return
 		}
 	}()
 
