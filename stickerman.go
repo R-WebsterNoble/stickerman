@@ -59,10 +59,10 @@ func processOtherCommand(message *Message) string {
 		keywordsText := message.Text[5:]
 		return "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
 	} else if strings.HasPrefix(message.Text, "/remove ") {
-		usersStickerId, _ := GetUserState(message.Chat.ID)
+		usersStickerFileId, _ := GetUserState(message.Chat.ID)
 		groupId := getOrCreateUserGroup(message.Chat.ID)
 		keywordsText := message.Text[8:]
-		return removeKeywordsFromSticker(usersStickerId, keywordsText, groupId)
+		return removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
 	} else {
 		return "I don't recognise this command."
 	}
