@@ -66,7 +66,7 @@ func setupTestDB(dbName string) (adminDb *sql.DB) {
 func tearDownDB(adminDb *sql.DB, dbName string) {
 	err := db.Close()
 	checkErr(err)
-	defer checkErr(adminDb.Close())
+	defer func() { checkErr(adminDb.Close()) }()
 
 	_, err = adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
 	checkErr(err)
@@ -88,7 +88,7 @@ ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
 	insertStickersStatement, err := transaction.Prepare(insertStickersQuery)
-	defer checkErr(insertStickersStatement.Close())
+	defer func() { checkErr(insertStickersStatement.Close()) }()
 	checkErr(err)
 
 	insertKeywordsQuery := `
@@ -97,7 +97,7 @@ ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
 	insertKeywordsStatement, err := transaction.Prepare(insertKeywordsQuery)
-	defer checkErr(insertKeywordsStatement.Close())
+	defer func() { checkErr(insertKeywordsStatement.Close()) }()
 	checkErr(err)
 
 	insertSessionQuery := `
@@ -113,7 +113,7 @@ RETURNING id;`
             DO UPDATE SET chat_id = excluded.chat_id
           returning group_id;`
 	insertSessionStatement, err := transaction.Prepare(insertSessionQuery)
-	defer checkErr(insertSessionStatement.Close())
+	defer func() { checkErr(insertSessionStatement.Close()) }()
 	checkErr(err)
 
 	insertStickersKeywordsQuery := `
@@ -121,7 +121,7 @@ INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, 
 ON CONFLICT DO NOTHING
 RETURNING id;`
 	insertStickersKeywordsStatement, err := transaction.Prepare(insertStickersKeywordsQuery)
-	defer checkErr(insertStickersKeywordsStatement.Close())
+	defer func() { checkErr(insertStickersKeywordsStatement.Close()) }()
 	checkErr(err)
 
 	var stickerId int64

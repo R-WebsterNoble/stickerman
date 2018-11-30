@@ -141,7 +141,7 @@ func callGetStickerSetApi(url string) GetStickerSetResult {
 		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in client.Do")
 		return GetStickerSetResult{false, Stickers{}}
 	}
-	defer checkErr(resp.Body.Close())
+	defer func() { checkErr(resp.Body.Close()) }()
 
 	var stickers GetStickerSetResult
 	err = json.NewDecoder(resp.Body).Decode(&stickers)
