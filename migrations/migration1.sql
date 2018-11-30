@@ -1,3 +1,5 @@
+-- noinspection SpellCheckingInspectionForFile
+
 CREATE EXTENSION "uuid-ossp";
 
 BEGIN;

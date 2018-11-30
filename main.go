@@ -2,9 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"github.com/logmatic/logmatic-go"
-	log "github.com/sirupsen/logrus"
-	"net/http"
+	"fmt"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"os"
 	"runtime/debug"
 	"strings"

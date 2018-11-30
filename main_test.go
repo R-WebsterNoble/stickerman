@@ -64,10 +64,11 @@ func setupTestDB(dbName string) (adminDb *sql.DB) {
 }
 
 func tearDownDB(adminDb *sql.DB, dbName string) {
-	db.Close()
-	defer adminDb.Close()
+	err := db.Close()
+	checkErr(err)
+	defer checkErr(adminDb.Close())
 
-	_, err := adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
+	_, err = adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
 	checkErr(err)
 }
 
@@ -87,7 +88,7 @@ ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
 	insertStickersStatement, err := transaction.Prepare(insertStickersQuery)
-	defer insertStickersStatement.Close()
+	defer checkErr(insertStickersStatement.Close())
 	checkErr(err)
 
 	insertKeywordsQuery := `
@@ -96,7 +97,7 @@ ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
 	insertKeywordsStatement, err := transaction.Prepare(insertKeywordsQuery)
-	defer insertKeywordsStatement.Close()
+	defer checkErr(insertKeywordsStatement.Close())
 	checkErr(err)
 
 	insertSessionQuery := `
@@ -112,7 +113,7 @@ RETURNING id;`
             DO UPDATE SET chat_id = excluded.chat_id
           returning group_id;`
 	insertSessionStatement, err := transaction.Prepare(insertSessionQuery)
-	defer insertSessionStatement.Close()
+	defer checkErr(insertSessionStatement.Close())
 	checkErr(err)
 
 	insertStickersKeywordsQuery := `
@@ -120,7 +121,7 @@ INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, 
 ON CONFLICT DO NOTHING
 RETURNING id;`
 	insertStickersKeywordsStatement, err := transaction.Prepare(insertStickersKeywordsQuery)
-	defer insertStickersKeywordsStatement.Close()
+	defer checkErr(insertStickersKeywordsStatement.Close())
 	checkErr(err)
 
 	var stickerId int64
@@ -267,7 +268,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 
 func TestHandler_HandlesSticker(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"Feroxdoon2","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
+	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"SetName","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
