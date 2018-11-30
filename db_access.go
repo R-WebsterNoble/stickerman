@@ -216,8 +216,8 @@ ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
 	insertStickersStatement, err := transaction.Prepare(stickerQuery)
-	defer func() { checkErr(insertStickersStatement.Close()) }()
 	checkErr(err)
+	defer func() { checkErr(insertStickersStatement.Close()) }()
 
 	keywordQuery := `
 INSERT INTO keywords (keyword) VALUES ($1)
@@ -225,15 +225,15 @@ ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
 	insertKeywordsStatement, err := transaction.Prepare(keywordQuery)
-	defer func() { checkErr(insertKeywordsStatement.Close()) }()
 	checkErr(err)
+	defer func() { checkErr(insertKeywordsStatement.Close()) }()
 
 	stickerKeywordQuery := `
 INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING;`
 	insertStickersKeywordsStatement, err := transaction.Prepare(stickerKeywordQuery)
-	defer func() { checkErr(insertStickersKeywordsStatement.Close()) }()
 	checkErr(err)
+	defer func() { checkErr(insertStickersKeywordsStatement.Close()) }()
 
 	var stickerId int
 	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
