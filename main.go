@@ -1,12 +1,12 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"fmt"
-	"runtime/debug"
 	"os"
-	"database/sql"
+	"runtime/debug"
 	"strings"
 )
 

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
+	"log"
 	"strconv"
 )
 
@@ -89,7 +89,7 @@ func inlineQueryResponse(inlineQueryID string, queryResultStickerIds []string, n
 	}
 }
 
-func textMessageResponse(chatId int64, text string) (events.APIGatewayProxyResponse) {
+func textMessageResponse(chatId int64, text string) events.APIGatewayProxyResponse {
 	response := Response{
 		"sendMessage",
 		chatId,
