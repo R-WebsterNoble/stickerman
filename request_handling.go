@@ -5,7 +5,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"log"
 	"strconv"
 )
 
@@ -125,5 +124,6 @@ func sendResponse(responseWriter http.ResponseWriter, response interface{}) {
 
 	resultString := string(jsonString)
 	log.Println(resultString)
-	io.WriteString(responseWriter, resultString)
+	_, err = io.WriteString(responseWriter, resultString)
+	checkErr(err)
 }
