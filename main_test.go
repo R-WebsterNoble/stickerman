@@ -52,7 +52,7 @@ func setupTestDB(dbName string) (adminDb *sql.DB) {
 func tearDownDB(adminDb *sql.DB, dbName string) {
 	err := db.Close()
 	checkErr(err)
-	defer checkErr(adminDb.Close())
+	defer func() { checkErr(adminDb.Close()) }()
 
 	_, err = adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
 	checkErr(err)
@@ -74,8 +74,8 @@ ON CONFLICT (file_id)
   DO UPDATE set file_id = excluded.file_id
 RETURNING id;`
 	insertStickersStatement, err := transaction.Prepare(insertStickersQuery)
-	defer checkErr(insertStickersStatement.Close())
 	checkErr(err)
+	defer func() { checkErr(insertStickersStatement.Close()) }()
 
 	insertKeywordsQuery := `
 INSERT INTO keywords (keyword) VALUES ($1)
@@ -83,8 +83,8 @@ ON CONFLICT (keyword)
   DO UPDATE set keyword = excluded.keyword
 RETURNING id;`
 	insertKeywordsStatement, err := transaction.Prepare(insertKeywordsQuery)
-	defer checkErr(insertKeywordsStatement.Close())
 	checkErr(err)
+	defer func() { checkErr(insertKeywordsStatement.Close()) }()
 
 	insertSessionQuery := `
           WITH inserted AS (
@@ -99,16 +99,16 @@ RETURNING id;`
             DO UPDATE SET chat_id = excluded.chat_id
           returning group_id;`
 	insertSessionStatement, err := transaction.Prepare(insertSessionQuery)
-	defer checkErr(insertSessionStatement.Close())
 	checkErr(err)
+	defer func() { checkErr(insertSessionStatement.Close()) }()
 
 	insertStickersKeywordsQuery := `
 INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING
 RETURNING id;`
 	insertStickersKeywordsStatement, err := transaction.Prepare(insertStickersKeywordsQuery)
-	defer checkErr(insertStickersKeywordsStatement.Close())
 	checkErr(err)
+	defer func() { checkErr(insertStickersKeywordsStatement.Close()) }()
 
 	var stickerId int64
 	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
@@ -674,11 +674,12 @@ func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 	defer cleanUpDb()
 	request := events.APIGatewayProxyRequest{Body: `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`}
 
-	Handler(request)
+	response, err := Handler(request)
+	assert.IsType(t, err, nil)
 
 	request = events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"VaultBoySet Fallout-Vault-Boy Fallout Vault Boy 😂","offset":""}}`}
-
-	response, err := Handler(request)
+	
+	response, err = Handler(request)
 
 	assert.IsType(t, err, nil)
 	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"CAADAQADrwgAAr-MkARNRpJexr9oegI"}],"cache_time":0,"is_personal":true,"next_offset":""}`
