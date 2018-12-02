@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 )
 
 func processMessage(message *Message) (responseMessage string) {
@@ -84,11 +85,22 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	return ""
 }
 
+var enableTestWaitGroup = false
+var testWaitGroup sync.WaitGroup
+
 func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		addStickerSetDefaultTags(message.Sticker, groupId)
+		if enableTestWaitGroup {
+			testWaitGroup.Add(1)
+		}
+		go func() {
+			addStickerSetDefaultTags(message.Sticker, groupId)
+			if enableTestWaitGroup {
+				testWaitGroup.Done()
+			}
+		}()
 		return "That's a nice sticker. Send me some tags and I'll add them to it."
 	} else {
 		switch mode {
@@ -141,7 +153,7 @@ func callGetStickerSetApi(url string) GetStickerSetResult {
 		fmt.Println("error in client.Do", err)
 		return GetStickerSetResult{false, Stickers{}}
 	}
-	defer resp.Body.Close()
+	defer func() { checkErr(resp.Body.Close()) }()
 
 	var stickers GetStickerSetResult
 	err = json.NewDecoder(resp.Body).Decode(&stickers)

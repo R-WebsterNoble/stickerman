@@ -24,8 +24,9 @@ func runTests(m *testing.M) int {
 		adminDb := setupTestDB(testDbName)
 		defer tearDownDB(adminDb, testDbName)
 	}
-
-	return m.Run()
+	enableTestWaitGroup = true
+	run := m.Run()
+	return run
 }
 
 func setupTestDB(dbName string) (adminDb *sql.DB) {
@@ -166,6 +167,7 @@ func setupUserState(stickerFileId string, userMode string) {
 }
 
 func cleanUpDb() {
+	testWaitGroup.Wait()
 	keywordsCleanupQuery := `DELETE FROM keywords WHERE keyword ILIKE 'keyword%'`
 	_, err := db.Exec(keywordsCleanupQuery)
 	checkErr(err)
@@ -676,9 +678,10 @@ func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 
 	response, err := Handler(request)
 	assert.IsType(t, err, nil)
+	testWaitGroup.Wait()
 
 	request = events.APIGatewayProxyRequest{Body: `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"VaultBoySet Fallout-Vault-Boy Fallout Vault Boy 😂","offset":""}}`}
-	
+
 	response, err = Handler(request)
 
 	assert.IsType(t, err, nil)
