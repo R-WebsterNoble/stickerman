@@ -9,9 +9,10 @@ import (
 	"strings"
 )
 
-func processMessage(message *Message) (responseMessage string) {
+func processMessage(message *Message) BotResponce {
 	if message.ReplyToMessage != nil && message.ReplyToMessage.Sticker != nil && len(message.Text) != 0 {
-		return addKeywordFromStickerReply(message)
+		responseText := addKeywordFromStickerReply(message)
+		return &TextMessageResponse{Text: responseText}
 	}
 
 	if len(message.Text) != 0 {
@@ -21,67 +22,83 @@ func processMessage(message *Message) (responseMessage string) {
 			return processKeywordMessage(message.Chat.ID, message.Text)
 		}
 	} else if message.Sticker != nil {
-		return processStickerMessage(message)
+		responceText := processStickerMessage(message)
+		return &TextMessageResponse{Text: responceText}
 	}
 
-	return "I don't know how to interpret your message."
+	return &TextMessageResponse{Method: "sendMessage", Text: "I don't know how to interpret your message."}
 }
 
-func processCommand(message *Message) (responseMessage string) {
+func processCommand(message *Message) (responseMessage BotResponce) {
 	switch strings.ToLower(message.Text) {
 	case "/start":
 		fallthrough
 	case "/help":
-		return "Hi, I'm Sticker Manager Bot.\n" +
+		return &TextMessageResponse{Text: "Hi, I'm Sticker Manager Bot.\n" +
 			"I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
 			"\n" +
 			"Usage:\n" +
 			"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
 			"\n" +
-			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
+			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."}
 	case "/add":
 		setUserMode(message.Chat.ID, "add")
-		return "Okay, send me some tags and I'll add them to the sticker."
+		return &TextMessageResponse{Text: "Okay, send me some tags and I'll add them to the sticker."}
 	case "/remove":
 		setUserMode(message.Chat.ID, "remove")
-		return "Okay, I'll remove tags you send me from this sticker."
+		return &TextMessageResponse{Text: "Okay, I'll remove tags you send me from this sticker."}
 	default:
 		return processOtherCommand(message)
 	}
 }
 
-func processOtherCommand(message *Message) string {
+func processOtherCommand(message *Message) BotResponce {
 	if strings.HasPrefix(message.Text, "/add ") {
 		groupId, usersStickerId := setUserMode(message.Chat.ID, "add")
 		if usersStickerId == "" {
-			return "Send a sticker to me then I'll be able to add tags to it."
+			return &TextMessageResponse{Text: "Send a sticker to me then I'll be able to add tags to it."}
 		}
 		keywordsText := message.Text[5:]
-		return "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+		responseText := "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+		return &TextMessageResponse{Text: responseText}
 	} else if strings.HasPrefix(message.Text, "/remove ") {
 		usersStickerFileId, _ := GetUserState(message.Chat.ID)
 		groupId := getOrCreateUserGroup(message.Chat.ID)
 		keywordsText := message.Text[8:]
-		return removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		responseText := removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		return &TextMessageResponse{Text: responseText}
+	} else if strings.HasPrefix(message.Text, "/TestResponseKeyboard") {
+		s := "s"
+		return &InlineKeyboardMarkupResponseMessage{
+			Text: "blah",
+			ReplyMarkup: InlineKeyboardMarkup{
+				[][]InlineKeyboardButton{
+					{InlineKeyboardButton{Text: "a1", CallbackData: &s}, InlineKeyboardButton{Text: "a2", CallbackData: &s}},
+					{InlineKeyboardButton{Text: "b1", CallbackData: &s}, InlineKeyboardButton{Text: "b2", CallbackData: &s}},
+				},
+			},
+		}
 	} else {
-		return "I don't recognise this command."
+		return &TextMessageResponse{Text: "I don't recognise this command."}
 	}
 }
 
-func processKeywordMessage(chatId int64, messageText string) string {
+func processKeywordMessage(chatId int64, messageText string) BotResponce {
 	usersStickerId, mode := GetUserState(chatId)
 	if usersStickerId == "" {
-		return "Send a sticker to me then I'll be able to add tags to it."
+		return &TextMessageResponse{Text: "Send a sticker to me then I'll be able to add tags to it."}
 	}
 	groupId := getOrCreateUserGroup(chatId)
 	switch mode {
 	case "add":
-		return addKeywordsToSticker(usersStickerId, messageText, groupId)
+		responseText := addKeywordsToSticker(usersStickerId, messageText, groupId)
+		return &TextMessageResponse{Text: responseText}
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		responseText := removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		return &TextMessageResponse{Text: responseText}
 	}
 
-	return ""
+	return &TextMessageResponse{Text: ""}
 }
 
 func processStickerMessage(message *Message) string {

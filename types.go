@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -26,10 +27,87 @@ import (
 //	Username   interface{} `json:"username,omitempty"`
 //}
 
-type Response struct {
+func toJsonString(obj interface{}) string {
+	jsonString, err := json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(jsonString)
+}
+
+type BotResponce interface {
+	ToJson() string
+	SetChatId(id int64)
+	SetInlineQueryId(id string)
+}
+
+type TextMessageResponse struct {
 	Method string `json:"method,omitempty"`
 	ChatId int64  `json:"chat_id,omitempty"`
-	Text   string `json:"text,omitempty"`
+	Text   string `json:"text"`
+}
+
+func (t *TextMessageResponse) ToJson() string {
+	t.Method = "sendMessage"
+	return toJsonString(t)
+}
+func (t *TextMessageResponse) SetChatId(chatId int64) {
+	t.ChatId = chatId
+}
+func (t *TextMessageResponse) SetInlineQueryId(id string) {}
+
+type InlineKeyboardMarkupResponseMessage struct {
+	Method      string               `json:"method,omitempty"`
+	ChatId      int64                `json:"chat_id,omitempty"`
+	Text        string               `json:"text"`
+	ReplyMarkup InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+}
+
+func (t *InlineKeyboardMarkupResponseMessage) ToJson() string {
+	t.Method = "sendMessage"
+	return toJsonString(t)
+}
+func (t *InlineKeyboardMarkupResponseMessage) SetChatId(chatId int64) {
+	t.ChatId = chatId
+}
+func (t *InlineKeyboardMarkupResponseMessage) SetInlineQueryId(id string) {}
+
+type AnswerCallbackQuery struct {
+	Method          string `json:"method"`
+	CallbackQueryId string `json:"callback_query_id,omitempty"`
+	Text            string `json:"text,omitempty"`
+	ShowAlert       bool   `json:"show_alert,omitempty"`
+	//CacheTime       int                              `json:"cache_time,omitempty"`
+	//IsPersonal      bool                             `json:"is_personal,omitempty"`
+	//NextOffset      string                           `json:"next_offset,omitempty"`
+}
+
+func (t *AnswerCallbackQuery) ToJson() string {
+	t.Method = "answerCallbackQuery"
+	return toJsonString(t)
+}
+func (t *AnswerCallbackQuery) SetChatId(id int64) {}
+func (t *AnswerCallbackQuery) SetInlineQueryId(callbackQueryId string) {
+	t.CallbackQueryId = callbackQueryId
+}
+
+type AnswerInlineQuery struct {
+	Method        string                           `json:"method"`
+	InlineQueryId string                           `json:"inline_query_id"`
+	Results       []InlineQueryResultCachedSticker `json:"results"`
+	CacheTime     int                              `json:"cache_time"`
+	IsPersonal    bool                             `json:"is_personal"`
+	NextOffset    string                           `json:"next_offset"`
+}
+
+func (t *AnswerInlineQuery) ToJson() string {
+	t.Method = "answerInlineQuery"
+	return toJsonString(t)
+}
+func (t *AnswerInlineQuery) SetChatId(id int64) {}
+func (t *AnswerInlineQuery) SetInlineQueryId(callbackQueryId string) {
+	t.InlineQueryId = callbackQueryId
 }
 
 // Update is an update response, from GetUpdates.
@@ -387,19 +465,19 @@ type Venue struct {
 //}
 
 // ReplyKeyboardMarkup allows the Bot to set a custom keyboard.
-//type ReplyKeyboardMarkup struct {
-//	Keyboard        [][]KeyboardButton `json:"keyboard,omitempty"`
-//	ResizeKeyboard  bool               `json:"resize_keyboard,omitempty"`   // optional
-//	OneTimeKeyboard bool               `json:"one_time_keyboard,omitempty"` // optional
-//	Selective       bool               `json:"selective,omitempty"`         // optional
-//}
+type ReplyKeyboardMarkup struct {
+	Keyboard        [][]KeyboardButton `json:"keyboard,omitempty"`
+	ResizeKeyboard  bool               `json:"resize_keyboard,omitempty"`   // optional
+	OneTimeKeyboard bool               `json:"one_time_keyboard,omitempty"` // optional
+	Selective       bool               `json:"selective,omitempty"`         // optional
+}
 
 // KeyboardButton is a button within a custom keyboard.
-//type KeyboardButton struct {
-//	Text            string `json:"text,omitempty"`
-//	RequestContact  bool   `json:"request_contact,omitempty"`
-//	RequestLocation bool   `json:"request_location,omitempty"`
-//}
+type KeyboardButton struct {
+	Text            string `json:"text,omitempty"`
+	RequestContact  bool   `json:"request_contact,omitempty"`
+	RequestLocation bool   `json:"request_location,omitempty"`
+}
 
 // ReplyKeyboardHide allows the Bot to hide a custom keyboard.
 //type ReplyKeyboardHide struct {
@@ -414,9 +492,9 @@ type Venue struct {
 //}
 
 // InlineKeyboardMarkup is a custom keyboard presented for an inline bot.
-//type InlineKeyboardMarkup struct {
-//	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard,omitempty"`
-//}
+type InlineKeyboardMarkup struct {
+	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard,omitempty"`
+}
 
 // InlineKeyboardButton is a button within a custom keyboard for
 // inline query responses.
@@ -425,15 +503,15 @@ type Venue struct {
 // will change behavior.
 //
 // CallbackGame, if set, MUST be first button in first row.
-//type InlineKeyboardButton struct {
-//	Text                         string        `json:"text,omitempty"`
-//	URL                          *string       `json:"url,omitempty,omitempty"`                              // optional
-//	CallbackData                 *string       `json:"callback_data,omitempty,omitempty"`                    // optional
-//	SwitchInlineQuery            *string       `json:"switch_inline_query,omitempty,omitempty"`              // optional
-//	SwitchInlineQueryCurrentChat *string       `json:"switch_inline_query_current_chat,omitempty,omitempty"` // optional
-//	CallbackGame                 *CallbackGame `json:"callback_game,omitempty,omitempty"`                    // optional
-//	Pay                          bool          `json:"pay,omitempty,omitempty"`                              // optional
-//}
+type InlineKeyboardButton struct {
+	Text                         string        `json:"text"`
+	URL                          *string       `json:"url,omitempty,omitempty"`                              // optional
+	CallbackData                 *string       `json:"callback_data,omitempty,omitempty"`                    // optional
+	SwitchInlineQuery            *string       `json:"switch_inline_query,omitempty,omitempty"`              // optional
+	SwitchInlineQueryCurrentChat *string       `json:"switch_inline_query_current_chat,omitempty,omitempty"` // optional
+	CallbackGame                 *CallbackGame `json:"callback_game,omitempty,omitempty"`                    // optional
+	Pay                          bool          `json:"pay,omitempty,omitempty"`                              // optional
+}
 
 // CallbackQuery is data sent when a keyboard button with callback data
 // is clicked.
@@ -516,7 +594,7 @@ type Animation struct {
 //}
 
 // CallbackGame is for starting a game in an inline keyboard button.
-//type CallbackGame struct{}
+type CallbackGame struct{}
 
 // WebhookInfo is information about a currently set webhook.
 //type WebhookInfo struct {

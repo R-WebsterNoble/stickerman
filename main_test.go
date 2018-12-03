@@ -754,3 +754,44 @@ func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"CAADAQADrwgAAr-MkARNRpJexr9oegI"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
+
+func TestHandler_HandlesTestKeyboardMessage(t *testing.T) {
+	requestBody := `{
+        "update_id": 916666513,
+        "callback_query": {
+            "id": "913797543384206464",
+            "from": {
+                "id": 212760070,
+                "first_name": "Didassi",
+                "username": "Didassi",
+                "language_code": "en"
+            },
+            "message": {
+                "message_id": 515,
+                "from": {
+                    "id": 629362565,
+                    "first_name": "DevStickerMan",
+                    "username": "DevStickerManBot",
+                    "is_bot": true
+                },
+                "date": 1543875817,
+                "chat": {
+                    "id": 212760070,
+                    "type": "private",
+                    "username": "Didassi",
+                    "first_name": "Didassi"
+                },
+                "text": "blah"
+            },
+            "chat_instance": "-6309785590157427195",
+            "data": "s"
+        }
+    }`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+
+	assert.IsType(t, err, nil)
+	expected := `{\"method\":\"sendMessage\",\"chat_id\":212760070,\"text\":\"blah\",\"reply_markup\":{\"inline_keyboard\":[[{\"text\":\"a1\"},{\"text\":\"a2\"}],[{\"text\":\"b1\"},{\"text\":\"b2\"}]]}}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}

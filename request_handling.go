@@ -22,8 +22,8 @@ func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 	log.WithFields(log.Fields{"update": update}).Info()
 
 	if update.Message != nil {
-		responseMessage := processMessage(update.Message)
-		textMessageResponse(responseWriter, update.Message.Chat.ID, responseMessage)
+		response := processMessage(update.Message)
+		sendChatResponse(responseWriter, update.Message.Chat.ID, response)
 		return
 		//return textMessageResponse(update.Message.Chat.ID, responseMessage)
 	} else if update.InlineQuery != nil {
@@ -39,6 +39,12 @@ func ProcessRequest(responseWriter http.ResponseWriter, request *http.Request) {
 		return
 	} else if update.ChosenInlineResult != nil {
 		return
+	} else if update.CallbackQuery != nil {
+		sendAnswerCallbackQuery(responseWriter, AnswerCallbackQuery{
+			CallbackQueryId: update.CallbackQuery.ID,
+			Text:            "you clicked: " + update.CallbackQuery.Data,
+		})
+		return
 	}
 
 	errorMessage := "unable to process request: neither message nor update found"
@@ -52,15 +58,6 @@ type InlineQueryResultCachedSticker struct {
 	Type          string `json:"type"`
 	Id            string `json:"id"`
 	StickerFileId string `json:"sticker_file_id"`
-}
-
-type AnswerCallbackQuery struct {
-	Method        string                           `json:"method"`
-	InlineQueryId string                           `json:"inline_query_id"`
-	Results       []InlineQueryResultCachedSticker `json:"results"`
-	CacheTime     int                              `json:"cache_time"`
-	IsPersonal    bool                             `json:"is_personal"`
-	NextOffset    string                           `json:"next_offset"`
 }
 
 func inlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryID string, queryResultStickerIds []string, nextOffset int) {
@@ -79,7 +76,7 @@ func inlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryID strin
 		nextOffsetString = strconv.Itoa(nextOffset)
 	}
 
-	response := AnswerCallbackQuery{
+	response := AnswerInlineQuery{
 		"answerInlineQuery",
 		inlineQueryID,
 		queryResultStickers[:],
@@ -88,7 +85,7 @@ func inlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryID strin
 		nextOffsetString,
 	}
 
-	sendResponse(responseWriter, response)
+	sendInlineQueryResponse(responseWriter, inlineQueryID, &response)
 	//jsonString := string(jsonResult)
 	//return events.APIGatewayProxyResponse{
 	//	StatusCode:      200,
@@ -98,32 +95,26 @@ func inlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryID strin
 	//}
 }
 
-func textMessageResponse(responseWriter http.ResponseWriter, chatId int64, text string) {
-	response := Response{
-		"sendMessage",
-		chatId,
-		text,
-	}
-
-	sendResponse(responseWriter, response)
-
-	//return events.APIGatewayProxyResponse{
-	//	StatusCode:      200,
-	//	Headers:         map[string]string{"Content-Type": "application/json"},
-	//	Body:            string(jsonString),
-	//	IsBase64Encoded: false,
-	//}
+func sendChatResponse(responseWriter http.ResponseWriter, chatId int64, response BotResponce) {
+	response.SetChatId(chatId)
+	jsonResponse := response.ToJson()
+	log.WithFields(log.Fields{"response": response}).Info()
+	_, err := io.WriteString(responseWriter, jsonResponse)
+	checkErr(err)
 }
 
-func sendResponse(responseWriter http.ResponseWriter, response interface{}) {
+func sendInlineQueryResponse(responseWriter http.ResponseWriter, inlineQueryId string, response BotResponce) {
+	response.SetInlineQueryId(inlineQueryId)
+	jsonResponse := response.ToJson()
 	log.WithFields(log.Fields{"response": response}).Info()
-	jsonString, err := json.Marshal(response)
-	if err != nil {
-		panic(err)
-	}
+	_, err := io.WriteString(responseWriter, jsonResponse)
+	checkErr(err)
+}
 
-	resultString := string(jsonString)
-	log.Println(resultString)
-	_, err = io.WriteString(responseWriter, resultString)
+func sendAnswerCallbackQuery(responseWriter http.ResponseWriter, response AnswerCallbackQuery) {
+	response.Method = "answerCallbackQuery"
+	jsonResponse := response.ToJson()
+	log.WithFields(log.Fields{"response": response}).Info()
+	_, err := io.WriteString(responseWriter, jsonResponse)
 	checkErr(err)
 }
