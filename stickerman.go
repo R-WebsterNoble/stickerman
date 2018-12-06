@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func processMessage(message *Message) (responseMessage string) {
@@ -138,11 +139,22 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	return ""
 }
 
+var enableTestWaitGroup = false
+var testWaitGroup sync.WaitGroup
+
 func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		addStickerSetDefaultTags(message.Sticker, groupId)
+		if enableTestWaitGroup {
+			testWaitGroup.Add(1)
+		}
+		go func() {
+			addStickerSetDefaultTags(message.Sticker, groupId)
+			if enableTestWaitGroup {
+				testWaitGroup.Done()
+			}
+		}()
 		return "That's a nice sticker. Send me some tags and I'll add them to it."
 	} else {
 		switch mode {

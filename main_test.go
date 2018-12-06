@@ -25,8 +25,9 @@ func runTests(m *testing.M) int {
 		adminDb := setupTestDB(testDbName)
 		defer tearDownDB(adminDb, testDbName)
 	}
-
-	return m.Run()
+	enableTestWaitGroup = true
+	run := m.Run()
+	return run
 }
 
 func setupHttpHandler(t *testing.T, body string) (*http.Request, error, *httptest.ResponseRecorder, http.HandlerFunc) {
@@ -180,6 +181,7 @@ func setupUserState(stickerFileId string, userMode string) {
 }
 
 func cleanUpDb() {
+	testWaitGroup.Wait()
 	keywordsCleanupQuery := `DELETE FROM keywords WHERE keyword ILIKE 'keyword%'`
 	_, err := db.Exec(keywordsCleanupQuery)
 	checkErr(err)
