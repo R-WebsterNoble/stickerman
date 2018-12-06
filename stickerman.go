@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -27,8 +28,9 @@ func processMessage(message *Message) (responseMessage string) {
 	return "I don't know how to interpret your message."
 }
 
-func processCommand(message *Message) (responseMessage string) {
-	switch strings.ToLower(message.Text) {
+func processCommand(message *Message) string {
+	lowerCaseMessage := strings.ToLower(message.Text)
+	switch lowerCaseMessage {
 	case "/start":
 		fallthrough
 	case "/help":
@@ -46,26 +48,41 @@ func processCommand(message *Message) (responseMessage string) {
 		setUserMode(message.Chat.ID, "remove")
 		return "Okay, I'll remove tags you send me from this sticker."
 	default:
-		return processOtherCommand(message)
+		return processOtherCommand(message.Chat.ID, lowerCaseMessage)
 	}
 }
 
-func processOtherCommand(message *Message) string {
-	if strings.HasPrefix(message.Text, "/add ") {
-		groupId, usersStickerId := setUserMode(message.Chat.ID, "add")
+func processOtherCommand(chatId int64, messageText string) string {
+	if strings.HasPrefix(messageText, "/add ") {
+		groupId, usersStickerId := setUserMode(chatId, "add")
 		if usersStickerId == "" {
 			return "Send a sticker to me then I'll be able to add tags to it."
 		}
-		keywordsText := message.Text[5:]
-		return "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
-	} else if strings.HasPrefix(message.Text, "/remove ") {
-		usersStickerFileId, _ := GetUserState(message.Chat.ID)
-		groupId := getOrCreateUserGroup(message.Chat.ID)
-		keywordsText := message.Text[8:]
-		return removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		keywordsText := messageText[5:]
+		status, addedTags := addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+		switch status {
+		case Success:
+			return "You are now in add mode.\n\nAdded " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+		case NoChange:
+			return "You are now in add mode."
+		}
+	} else if strings.HasPrefix(messageText, "/remove ") {
+		usersStickerFileId, _ := GetUserState(chatId)
+		groupId := getOrCreateUserGroup(chatId)
+		keywordsText := messageText[8:]
+		status, removedTags := removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		switch status {
+		case Success:
+			return "Removed " + strconv.FormatInt(removedTags, 10) + " " + pluralise("tag", removedTags) + "."
+		case NoChange:
+			setUserMode(chatId, "remove")
+			return "You are now in remove mode."
+		}
 	} else {
 		return "I don't recognise this command."
 	}
+
+	return ""
 }
 
 func processKeywordMessage(chatId int64, messageText string) string {
@@ -76,9 +93,21 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	groupId := getOrCreateUserGroup(chatId)
 	switch mode {
 	case "add":
-		return addKeywordsToSticker(usersStickerId, messageText, groupId)
+		status, addedTags := addKeywordsToSticker(usersStickerId, messageText, groupId)
+		switch status {
+		case Success:
+			return "Added " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+		case NoChange:
+			return "No tags to add"
+		}
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		status, removedTags := removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		switch status {
+		case Success:
+			return "Removed " + strconv.FormatInt(removedTags, 10) + " " + pluralise("tag", removedTags) + "."
+		case NoChange:
+			return "No tags to Remove"
+		}
 	}
 
 	return ""
@@ -156,7 +185,14 @@ func callGetStickerSetApi(url string) GetStickerSetResult {
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
 	groupId := getOrCreateUserGroup(message.Chat.ID)
-	return addKeywordsToSticker(stickerFileId, message.Text, groupId)
+	status, addedTags := addKeywordsToSticker(stickerFileId, message.Text, groupId)
+	switch status {
+	case Success:
+		return "Added " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+	case NoChange:
+		return "No tags to add"
+	}
+	return ""
 }
 
 func getKeywordsArray(keywordsString string) []string {

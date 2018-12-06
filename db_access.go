@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+type DbOperationStatus int
+
+const (
+	Success       DbOperationStatus = 0
+	InvalidFormat DbOperationStatus = 1
+	NoChange      DbOperationStatus = 2
+)
+
 func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset int) (allStickerFileIds []string, nextOffset int) {
 	keywordsString = EscapeSql(keywordsString)
 	keywordsString = keywordsString + "%"
@@ -191,14 +199,15 @@ WHERE chat_id = $1`
 
 	return
 }
-func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId int64) (responseMessage string) {
+
+func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId int64) (status DbOperationStatus, addedTags int64) {
 	keywordsArray := getKeywordsArray(keywordsString)
 	return addKeywordsArrayToSticker(stickerFileId, keywordsArray, groupId)
 }
 
-func addKeywordsArrayToSticker(stickerFileId string, keywords []string, groupId int64) (responseMessage string) {
+func addKeywordsArrayToSticker(stickerFileId string, keywords []string, groupId int64) (status DbOperationStatus, addedTags int64) {
 	if len(keywords) == 0 {
-		return "No tags to add"
+		return NoChange, 0
 	}
 
 	transaction, err := db.Begin()
@@ -263,20 +272,22 @@ ON CONFLICT DO NOTHING;`
 		keywordsAdded += numRowsAffected
 	}
 
-	responseMessage = "Added " + strconv.FormatInt(keywordsAdded, 10) + " " + pluralise("tag", keywordsAdded) + "."
-
 	err = transaction.Commit()
 	checkErr(err)
 
-	return
+	if keywordsAdded == 0 {
+		return NoChange, 0
+	}
+
+	return Success, keywordsAdded
 }
 
-func removeKeywordsFromSticker(stickerFileId string, keywordsString string, groupId int64) string {
+func removeKeywordsFromSticker(stickerFileId string, keywordsString string, groupId int64) (status DbOperationStatus, removedTags int64) {
 	keywordsString = EscapeSql(keywordsString)
 	keywords := getKeywordsArray(keywordsString)
 
 	if len(keywords) == 0 {
-		return "No tags to remove"
+		return NoChange, 0
 	}
 
 	query := `
@@ -290,9 +301,13 @@ WHERE sk.keyword_id = k.id
 	result, err := db.Exec(query, stickerFileId, pq.Array(keywords), groupId)
 	checkErr(err)
 
-	numRows, err := result.RowsAffected()
+	keywordsRemoved, err := result.RowsAffected()
 
-	return "You have deleted " + strconv.FormatInt(numRows, 10) + " " + pluralise("tag", numRows) + "."
+	if keywordsRemoved == 0 {
+		return NoChange, 0
+	}
+
+	return Success, keywordsRemoved
 }
 
 func getOrCreateUserGroup(chatId int64) (groupId int64) {

@@ -299,7 +299,7 @@ func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Added 0 tags."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"No tags to add"}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -503,7 +503,7 @@ func TestHandler_HandlesKeywordMessageWithRemove(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 0 tags."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"No tags to Remove"}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -575,7 +575,7 @@ func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tag."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Removed 1 tag."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -659,7 +659,7 @@ func TestHandler_HandlesAddCommandWithKeyword(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You are now in add mode.\nAdded 1 tag."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You are now in add mode.\n\nAdded 1 tag."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -672,7 +672,7 @@ func TestHandler_HandlesAddCommandWithRemove(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have deleted 1 tag."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Removed 1 tag."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
