@@ -32,7 +32,7 @@ func GetAllStickerIdsForKeywords(keywordsString string, groupId int64, offset in
                FROM keywords k
                  JOIN sticker_keywords sk ON sk.keyword_id = k.id
                  JOIN stickers s ON sk.sticker_id = s.id
-               WHERE sk.group_id = $1
+               WHERE (sk.group_id = $1 OR sk.group_id = 0)
                      AND k.keyword ILIKE $2
              ) k1`)
 
@@ -191,6 +191,7 @@ WHERE chat_id = $1`
 
 	return
 }
+
 func addKeywordsToSticker(stickerFileId string, keywordsString string, groupId int64) (responseMessage string) {
 	keywordsArray := getKeywordsArray(keywordsString)
 	return addKeywordsArrayToSticker(stickerFileId, keywordsArray, groupId)

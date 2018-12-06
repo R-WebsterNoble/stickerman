@@ -113,3 +113,6 @@ BEGIN
                WHERE s.id = ANY (matching_sticker_ids);
 END;
 $$;
+
+INSERT INTO public.groups (id, uuid)
+VALUES (0, uuid_generate_v4())

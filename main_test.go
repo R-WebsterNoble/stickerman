@@ -754,3 +754,20 @@ func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"CAADAQADrwgAAr-MkARNRpJexr9oegI"}],"cache_time":0,"is_personal":true,"next_offset":""}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
+
+func TestHandler_InlineQueryRturnsDefaultStickers(t *testing.T) {
+	defer cleanUpDb()
+
+	// Add default sticker
+	addKeywordsArrayToSticker("StickerFileId", []string{"keyword"}, 0)
+
+	requestBody := `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"Keyword","offset":""}}`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+
+	assert.IsType(t, err, nil)
+	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"StickerFileId"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}
+
