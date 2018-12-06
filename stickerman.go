@@ -47,6 +47,13 @@ func processCommand(message *Message) string {
 	case "/remove":
 		setUserMode(message.Chat.ID, "remove")
 		return "Okay, I'll remove tags you send me from this sticker."
+	case "/group":
+		fallthrough
+	case "/mygroup":
+		fallthrough
+	case "/getgroup":
+		usersGroupUuid := GetUserGroup(message.Chat.ID)
+		return `Your group ID is "` + usersGroupUuid + `". Other users can join your group using "/JoinGroup ` + usersGroupUuid + `"`
 	default:
 		return processOtherCommand(message.Chat.ID, lowerCaseMessage)
 	}
@@ -78,10 +85,26 @@ func processOtherCommand(chatId int64, messageText string) string {
 			setUserMode(chatId, "remove")
 			return "You are now in remove mode."
 		}
+	} else if strings.HasPrefix(messageText, "/joingroup ") {
+		return ProcessJoinGroup(chatId, messageText)
 	} else {
 		return "I don't recognise this command."
 	}
 
+	return ""
+}
+
+func ProcessJoinGroup(chatId int64, messageText string) string {
+	groupUuid := strings.TrimSpace(messageText[11:])
+	status := assignUserToGroup(chatId, groupUuid)
+	switch status {
+	case Success:
+		return "You have moved into the group."
+	case InvalidFormat:
+		return "That Group Id is not in the correct format, I'm expecting something that looks like this: 123e4567-e89b-12d3-a456-426655440000."
+	case NoChange:
+		return "You are already in that group."
+	}
 	return ""
 }
 

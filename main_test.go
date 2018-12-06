@@ -231,8 +231,6 @@ func TestHandler_HandlesUnknownMessage(t *testing.T) {
 
 	//request := events.APIGatewayProxyRequest{Body: `{"update_id":457211654,"edited_message":{"message_id":64,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524691085,"edit_date":1524693406,"text":"hig"}}`}
 
-
-
 	assert.IsType(t, err, nil)
 	assert.Equal(t, "unable to process request: neither message nor update found\n", responseRecorder.Body.String())
 }
@@ -752,5 +750,91 @@ func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 
 	assert.IsType(t, err, nil)
 	expected := `{"method":"answerInlineQuery","inline_query_id":"913797545109391540","results":[{"type":"sticker","id":"0","sticker_file_id":"CAADAQADrwgAAr-MkARNRpJexr9oegI"}],"cache_time":0,"is_personal":true,"next_offset":""}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}
+
+func TestGetUserGroup_GetsUserGroupHandlesNoUser(t *testing.T) {
+	defer cleanUpDb()
+
+	result := GetUserGroup(-1)
+
+	assert.Empty(t, result)
+}
+
+func TestGetUserGroup_GetsUserGroup(t *testing.T) {
+	defer cleanUpDb()
+	getOrCreateUserGroup(12345)
+
+	result := GetUserGroup(12345)
+
+	assert.NotEmpty(t, result)
+}
+
+func TestAssignUserGroup_AssignesUserGroup(t *testing.T) {
+	defer cleanUpDb()
+	getOrCreateUserGroup(12345)
+	getOrCreateUserGroup(0)
+	newGroupUuid := GetUserGroup(0)
+
+	assignUserToGroup(12345, newGroupUuid)
+
+	swappedUsersGroup := GetUserGroup(12345)
+	assert.Equal(t, swappedUsersGroup, newGroupUuid)
+}
+
+func TestHandler_AbleToGetGroup(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+	requestBody := `{"update_id":457211650,"message":{"message_id":65,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524692383,"text":"/Group","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+	usersGroup := GetUserGroup(12345)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"Your group ID is \"` + usersGroup + `\". Other users can join your group using \"/JoinGroup ` + usersGroup + `\""}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}
+
+func TestHandler_AbleToJoinGroup(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+
+	getOrCreateUserGroup(0)
+	newGroupUuid := GetUserGroup(0)
+
+	requestBody := `{"update_id":457211650,"message":{"message_id":65,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524692383,"text":"/JoinGroup ` + newGroupUuid + `","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have moved into the group."}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}
+
+func TestHandler_UnAbleToJoinGroupAlreadyIn(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+
+	currentGroupUuid := GetUserGroup(12345)
+
+	requestBody := `{"update_id":457211650,"message":{"message_id":65,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524692383,"text":"/JoinGroup ` + currentGroupUuid + `","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"You are already in that group."}`
+	assert.Equal(t, expected, responseRecorder.Body.String())
+}
+
+func TestHandler_UnAbleToJoinGroupinvalid(t *testing.T) {
+	defer cleanUpDb()
+	setupUserState("StickerFileId", "add")
+
+	requestBody := `{"update_id":457211650,"message":{"message_id":65,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524692383,"text":"/JoinGroup blah","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}`
+	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
+
+	handler.ServeHTTP(responseRecorder, req)
+	assert.IsType(t, err, nil)
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"That Group Id is not in the correct format, I'm expecting something that looks like this: 123e4567-e89b-12d3-a456-426655440000."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }

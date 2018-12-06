@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"strconv"
 	"strings"
@@ -333,6 +334,44 @@ returning group_id;
 	}
 	checkErr(err)
 	return
+}
+
+func GetUserGroup(chatId int64) (groupUuid string) {
+	query := `SELECT uuid
+from groups
+       JOIN sessions s on groups.id = s.group_id
+where chat_id = $1`
+	err := db.QueryRow(query, chatId).Scan(&groupUuid)
+	if err != sql.ErrNoRows {
+		checkErr(err)
+	}
+	return
+}
+
+func assignUserToGroup(chatId int64, groupGuid string) DbOperationStatus {
+
+	guid, err := uuid.Parse(groupGuid)
+	if err != nil {
+		return InvalidFormat
+	}
+
+	query := `
+WITH groupId AS (
+  SELECT id FROM groups WHERE uuid = $2 LIMIT 1
+)
+UPDATE sessions
+SET group_id = (SELECT id FROM groupId)
+WHERE EXISTS(SELECT id FROM groupId) AND chat_id = $1 AND group_id <> (SELECT id FROM groupId);`
+	result, err := db.Exec(query, chatId, guid)
+	checkErr(err)
+
+	rowsAffected, err := result.RowsAffected()
+	checkErr(err)
+	if rowsAffected == 0 {
+		return NoChange
+	}
+
+	return Success
 }
 
 func EscapeSql(s string) (result string) {
