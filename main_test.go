@@ -791,7 +791,7 @@ func TestHandler_AbleToGetGroup(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 	usersGroup := GetUserGroup(12345)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"Your group ID is \"` + usersGroup + `\". Other users can join your group using \"/JoinGroup ` + usersGroup + `\""}`
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"Your group ID is \\\"" + usersGroup + "\\\".\\nOther users can join your group using\\n/JoinGroup " + usersGroup + "\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -835,6 +835,6 @@ func TestHandler_UnAbleToJoinGroupinvalid(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"That Group Id is not in the correct format, I'm expecting something that looks like this: 123e4567-e89b-12d3-a456-426655440000."}`
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"That Group Id is not in the correct format, I'm expecting something that looks like this:\\n/JoinGroup 123e4567-e89b-12d3-a456-426655440000.\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }

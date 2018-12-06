@@ -53,7 +53,9 @@ func processCommand(message *Message) string {
 		fallthrough
 	case "/getgroup":
 		usersGroupUuid := GetUserGroup(message.Chat.ID)
-		return `Your group ID is "` + usersGroupUuid + `". Other users can join your group using "/JoinGroup ` + usersGroupUuid + `"`
+		return "Your group ID is \"" + usersGroupUuid + "\".\nOther users can join your group using\n/JoinGroup " + usersGroupUuid
+	case "/joingroup":
+		return "You must include another user's group id"
 	default:
 		return processOtherCommand(message.Chat.ID, lowerCaseMessage)
 	}
@@ -101,7 +103,7 @@ func ProcessJoinGroup(chatId int64, messageText string) string {
 	case Success:
 		return "You have moved into the group."
 	case InvalidFormat:
-		return "That Group Id is not in the correct format, I'm expecting something that looks like this: 123e4567-e89b-12d3-a456-426655440000."
+		return "That Group Id is not in the correct format, I'm expecting something that looks like this:\n/JoinGroup 123e4567-e89b-12d3-a456-426655440000."
 	case NoChange:
 		return "You are already in that group."
 	}
