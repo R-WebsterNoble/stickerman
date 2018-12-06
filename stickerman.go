@@ -47,6 +47,19 @@ func processCommand(message *Message) (responseMessage BotResponce) {
 	case "/remove":
 		setUserMode(message.Chat.ID, "remove")
 		return &TextMessageResponse{Text: "Okay, I'll remove tags you send me from this sticker."}
+	case "/testresponsekeyboard":
+		s := "s"
+		return &InlineKeyboardMarkupResponseMessage{
+			Text: "blah",
+			ReplyMarkup: InlineKeyboardMarkup{
+				[][]InlineKeyboardButton{
+					{InlineKeyboardButton{Text: "a1", CallbackData: &s}, InlineKeyboardButton{Text: "a2", CallbackData: &s}},
+					{InlineKeyboardButton{Text: "b1", CallbackData: &s}, InlineKeyboardButton{Text: "b2", CallbackData: &s}},
+				},
+			},
+		}
+	case "/testthing":
+		return &TextMessageResponse{Text: "/removething"}
 	default:
 		return processOtherCommand(message)
 	}
@@ -67,17 +80,6 @@ func processOtherCommand(message *Message) BotResponce {
 		keywordsText := message.Text[8:]
 		responseText := removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
 		return &TextMessageResponse{Text: responseText}
-	} else if strings.HasPrefix(message.Text, "/TestResponseKeyboard") {
-		s := "s"
-		return &InlineKeyboardMarkupResponseMessage{
-			Text: "blah",
-			ReplyMarkup: InlineKeyboardMarkup{
-				[][]InlineKeyboardButton{
-					{InlineKeyboardButton{Text: "a1", CallbackData: &s}, InlineKeyboardButton{Text: "a2", CallbackData: &s}},
-					{InlineKeyboardButton{Text: "b1", CallbackData: &s}, InlineKeyboardButton{Text: "b2", CallbackData: &s}},
-				},
-			},
-		}
 	} else {
 		return &TextMessageResponse{Text: "I don't recognise this command."}
 	}
