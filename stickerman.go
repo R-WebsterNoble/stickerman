@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 func processMessage(message *Message) (responseMessage string) {
@@ -27,8 +29,9 @@ func processMessage(message *Message) (responseMessage string) {
 	return "I don't know how to interpret your message."
 }
 
-func processCommand(message *Message) (responseMessage string) {
-	switch strings.ToLower(message.Text) {
+func processCommand(message *Message) string {
+	lowerCaseMessage := strings.ToLower(message.Text)
+	switch lowerCaseMessage {
 	case "/start":
 		fallthrough
 	case "/help":
@@ -45,27 +48,68 @@ func processCommand(message *Message) (responseMessage string) {
 	case "/remove":
 		setUserMode(message.Chat.ID, "remove")
 		return "Okay, I'll remove tags you send me from this sticker."
+	case "/group":
+		fallthrough
+	case "/mygroup":
+		fallthrough
+	case "/getgroup":
+		usersGroupUuid := GetUserGroup(message.Chat.ID)
+		return "Your group ID is \"" + usersGroupUuid + "\".\nOther users can join your group using\n/JoinGroup " + usersGroupUuid
+	case "/joingroup":
+		return "You must include another user's group id"
 	default:
-		return processOtherCommand(message)
+		return processOtherCommand(message.Chat.ID, lowerCaseMessage)
 	}
 }
 
-func processOtherCommand(message *Message) string {
-	if strings.HasPrefix(message.Text, "/add ") {
-		groupId, usersStickerId := setUserMode(message.Chat.ID, "add")
+func processOtherCommand(chatId int64, messageText string) string {
+	if strings.HasPrefix(messageText, "/add ") {
+		groupId := setUserMode(chatId, "add")
+		usersStickerId := GetStickerFileId(chatId)
 		if usersStickerId == "" {
 			return "Send a sticker to me then I'll be able to add tags to it."
 		}
-		keywordsText := message.Text[5:]
-		return "You are now in add mode.\n" + addKeywordsToSticker(usersStickerId, keywordsText, groupId)
-	} else if strings.HasPrefix(message.Text, "/remove ") {
-		usersStickerFileId, _ := GetUserState(message.Chat.ID)
-		groupId := getOrCreateUserGroup(message.Chat.ID)
-		keywordsText := message.Text[8:]
-		return removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		keywordsText := messageText[5:]
+		status, addedTags := addKeywordsToSticker(usersStickerId, keywordsText, groupId)
+		switch status {
+		case Success:
+			return "You are now in add mode.\n\nAdded " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+		case NoChange:
+			return "You are now in add mode."
+		}
+	} else if strings.HasPrefix(messageText, "/remove ") {
+		usersStickerFileId, _ := GetUserState(chatId)
+		groupId := getOrCreateUserGroup(chatId)
+		keywordsText := messageText[8:]
+		status, removedTags := removeKeywordsFromSticker(usersStickerFileId, keywordsText, groupId)
+		switch status {
+		case Success:
+			return "Removed " + strconv.FormatInt(removedTags, 10) + " " + pluralise("tag", removedTags) + "."
+		case NoChange:
+			setUserMode(chatId, "remove")
+			return "You are now in remove mode."
+		}
+	} else if strings.HasPrefix(messageText, "/joingroup ") {
+		return ProcessJoinGroup(chatId, messageText)
 	} else {
 		return "I don't recognise this command."
 	}
+
+	return ""
+}
+
+func ProcessJoinGroup(chatId int64, messageText string) string {
+	groupUuid := strings.TrimSpace(messageText[11:])
+	status := assignUserToGroup(chatId, groupUuid)
+	switch status {
+	case Success:
+		return "You have moved into the group."
+	case InvalidFormat:
+		return "That Group Id is not in the correct format, I'm expecting something that looks like this:\n/JoinGroup 123e4567-e89b-12d3-a456-426655440000."
+	case NoChange:
+		return "You are already in that group."
+	}
+	return ""
 }
 
 func processKeywordMessage(chatId int64, messageText string) string {
@@ -76,20 +120,43 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	groupId := getOrCreateUserGroup(chatId)
 	switch mode {
 	case "add":
-		return addKeywordsToSticker(usersStickerId, messageText, groupId)
+		status, addedTags := addKeywordsToSticker(usersStickerId, messageText, groupId)
+		switch status {
+		case Success:
+			return "Added " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+		case NoChange:
+			return "No tags to add"
+		}
 	case "remove":
-		return removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		status, removedTags := removeKeywordsFromSticker(usersStickerId, messageText, groupId)
+		switch status {
+		case Success:
+			return "Removed " + strconv.FormatInt(removedTags, 10) + " " + pluralise("tag", removedTags) + "."
+		case NoChange:
+			return "No tags to Remove"
+		}
 	}
 
 	return ""
 }
 
+var currentlyTesting = false
+var testWaitGroup sync.WaitGroup
+
 func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		addStickerSetDefaultTags(message.Sticker, groupId)
-		return "That's a nice sticker. Send me some tags and I'll add them to it."
+		if currentlyTesting {
+			testWaitGroup.Add(1)
+		}
+		go func() {
+			addStickerSetDefaultTags(message.Sticker, groupId)
+			if currentlyTesting {
+				testWaitGroup.Done()
+			}
+		}()
+		return "That's a nice sticker. Send me some tags and I'll add them to it.\n\nI'll also setup some default tags for every sticker in the pack for you."
 	} else {
 		switch mode {
 		case "add":
@@ -156,7 +223,14 @@ func callGetStickerSetApi(url string) GetStickerSetResult {
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID
 	groupId := getOrCreateUserGroup(message.Chat.ID)
-	return addKeywordsToSticker(stickerFileId, message.Text, groupId)
+	status, addedTags := addKeywordsToSticker(stickerFileId, message.Text, groupId)
+	switch status {
+	case Success:
+		return "Added " + strconv.FormatInt(addedTags, 10) + " " + pluralise("tag", addedTags) + "."
+	case NoChange:
+		return "No tags to add"
+	}
+	return ""
 }
 
 func getKeywordsArray(keywordsString string) []string {
