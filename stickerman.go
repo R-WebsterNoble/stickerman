@@ -64,7 +64,8 @@ func processCommand(message *Message) string {
 
 func processOtherCommand(chatId int64, messageText string) string {
 	if strings.HasPrefix(messageText, "/add ") {
-		groupId, usersStickerId := setUserMode(chatId, "add")
+		groupId := setUserMode(chatId, "add")
+		usersStickerId := GetStickerFileId(chatId)
 		if usersStickerId == "" {
 			return "Send a sticker to me then I'll be able to add tags to it."
 		}
@@ -139,23 +140,23 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	return ""
 }
 
-var enableTestWaitGroup = false
+var currentlyTesting = false
 var testWaitGroup sync.WaitGroup
 
 func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		if enableTestWaitGroup {
+		if currentlyTesting {
 			testWaitGroup.Add(1)
 		}
 		go func() {
 			addStickerSetDefaultTags(message.Sticker, groupId)
-			if enableTestWaitGroup {
+			if currentlyTesting {
 				testWaitGroup.Done()
 			}
 		}()
-		return "That's a nice sticker. Send me some tags and I'll add them to it."
+		return "That's a nice sticker. Send me some tags and I'll add them to it.\n\nI'll also setup some default tags for every sticker in the pack for you."
 	} else {
 		switch mode {
 		case "add":

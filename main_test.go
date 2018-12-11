@@ -46,7 +46,7 @@ func setupHttpHandler(t *testing.T, body string) (*http.Request, error, *httptes
 func setupTestDB(dbName string) (adminDb *sql.DB) {
 	adminConnStr := os.Getenv("pgAdminDBConnectionString")
 
-	adminDb, err := sql.Open("postgres", adminConnStr)
+	adminDb, err := sql.Open("postgres", adminConnStr+"postgres")
 	checkErr(err)
 
 	_, err = adminDb.Exec("DROP DATABASE IF EXISTS " + dbName)
@@ -55,10 +55,23 @@ func setupTestDB(dbName string) (adminDb *sql.DB) {
 	_, err = adminDb.Exec("CREATE DATABASE " + dbName)
 	checkErr(err)
 
+	newDb, err := sql.Open("postgres", adminConnStr+dbName)
+	checkErr(err)
+	defer func() { checkErr(newDb.Close()) }()
+
 	schema, err := ioutil.ReadFile("schema.sql")
 	checkErr(err)
 
-	_, err = db.Exec(string(schema))
+	_, err = newDb.Exec("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stickerman;")
+	checkErr(err)
+
+	_, err = newDb.Exec("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO stickerman;")
+	checkErr(err)
+
+	_, err = newDb.Exec("ALTER DATABASE " + dbName + " OWNER TO stickerman;")
+	checkErr(err)
+
+	_, err = newDb.Exec(string(schema))
 	checkErr(err)
 
 	return adminDb
@@ -74,90 +87,10 @@ func tearDownDB(adminDb *sql.DB, dbName string) {
 }
 
 func setupStickerKeywords(stickerFileId string, keywords ...string) (groupId int64) {
-	transaction, err := db.Begin()
-	defer func() {
-		err = transaction.Rollback()
-		if err != nil && err != sql.ErrTxDone {
-			panic(err)
-		}
-	}()
-	checkErr(err)
 
-	insertStickersQuery := `
-INSERT INTO stickers (file_id) VALUES ($1)
-ON CONFLICT (file_id)
-  DO UPDATE set file_id = excluded.file_id
-RETURNING id;`
-	insertStickersStatement, err := transaction.Prepare(insertStickersQuery)
-	checkErr(err)
-	defer func() { checkErr(insertStickersStatement.Close()) }()
+	groupId, _ = SetUserStickerAndGetMode(12345, stickerFileId)
 
-	insertKeywordsQuery := `
-INSERT INTO keywords (keyword) VALUES ($1)
-ON CONFLICT (keyword)
-  DO UPDATE set keyword = excluded.keyword
-RETURNING id;`
-	insertKeywordsStatement, err := transaction.Prepare(insertKeywordsQuery)
-	checkErr(err)
-	defer func() { checkErr(insertKeywordsStatement.Close()) }()
-
-	insertSessionQuery := `
-          WITH inserted AS (
-            INSERT INTO groups DEFAULT VALUES RETURNING id
-          )
-          INSERT INTO sessions (chat_id, file_id, group_id) SELECT
-                                                              $1,
-                                                              $2,
-                                                              inserted.id
-                                                            from inserted
-          ON CONFLICT (chat_id)
-            DO UPDATE SET chat_id = excluded.chat_id
-          returning group_id;`
-	insertSessionStatement, err := transaction.Prepare(insertSessionQuery)
-	checkErr(err)
-	defer func() { checkErr(insertSessionStatement.Close()) }()
-
-	insertStickersKeywordsQuery := `
-INSERT INTO sticker_keywords (sticker_id, keyword_id, group_id) VALUES ($1, $2, $3)
-ON CONFLICT DO NOTHING
-RETURNING id;`
-	insertStickersKeywordsStatement, err := transaction.Prepare(insertStickersKeywordsQuery)
-	checkErr(err)
-	defer func() { checkErr(insertStickersKeywordsStatement.Close()) }()
-
-	var stickerId int64
-	err = insertStickersStatement.QueryRow(stickerFileId).Scan(&stickerId)
-	if err != sql.ErrNoRows {
-		checkErr(err)
-	}
-
-	err = insertStickersStatement.Close()
-	checkErr(err)
-
-	err = insertSessionStatement.QueryRow(12345, stickerFileId).Scan(&groupId)
-
-	err = insertStickersStatement.Close()
-	checkErr(err)
-
-	var keywordIds [] int64
-	var stickerIds [] int64
-	for _, keyword := range keywords {
-		var keywordId int64
-		err = insertKeywordsStatement.QueryRow(keyword).Scan(&keywordId)
-		if err != sql.ErrNoRows {
-			checkErr(err)
-		}
-		keywordIds = append(keywordIds, keywordId)
-		var thisStickerId int64
-		err := insertStickersKeywordsStatement.QueryRow(stickerId, keywordId, groupId).Scan(&thisStickerId)
-		//if err != sql.ErrNoRows {
-		checkErr(err)
-		//}
-		stickerIds = append(stickerIds, thisStickerId)
-	}
-
-	err = transaction.Commit()
-	checkErr(err)
+	addKeywordsArrayToSticker(stickerFileId, keywords, groupId)
 
 	return
 }
@@ -268,19 +201,19 @@ func TestHandler_HandlesMessage(t *testing.T) {
 
 func TestHandler_HandlesSticker(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"SetName","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
+	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"😀","set_name":"SetName","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
 
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"That's a nice sticker. Send me some tags and I'll add them to it."}`
+	expected := `{"method":"sendMessage","chat_id":12345,"text":"That's a nice sticker. Send me some tags and I'll add them to it.\n\nI'll also setup some default tags for every sticker in the pack for you."}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
 func TestHandler_HandlesStickerReply(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword"}}`
+	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword"}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
@@ -293,7 +226,7 @@ func TestHandler_HandlesStickerReply(t *testing.T) {
 func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 	defer cleanUpDb()
 	setupStickerKeywords("StickerFileId", "keyword")
-	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"Keyword"}}`
+	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"Keyword"}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
@@ -305,7 +238,7 @@ func TestHandler_HandlesStickerReplyWithExistingKeyword(t *testing.T) {
 
 func TestHandler_HandlesStickerReplyWithMultipleKeywords(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword1 keyword2"}}`
+	requestBody := `{"message":{"message_id":359,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1525458701,"reply_to_message":{"message_id":321,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524777329,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}},"text":"keyword1 keyword2"}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
@@ -549,7 +482,7 @@ func TestHandler_HandlesInlineQueryDoesNotGetStickersFromOtherGroup(t *testing.T
 
 func TestHandler_HandlesAddingKeywordToStickerFromSession(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
+	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"👉","set_name":"","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 	handler.ServeHTTP(responseRecorder, req)
 	requestBody = `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"keyword"}}`
@@ -563,7 +496,7 @@ func TestHandler_HandlesAddingKeywordToStickerFromSession(t *testing.T) {
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
-func TestHandler_HandlesRemovingKeywordToStickerFromSession(t *testing.T) {
+func TestHandler_HandlesRemovingKeywordFromStickerUsingSession(t *testing.T) {
 	defer cleanUpDb()
 	setupStickerKeywords("StickerFileId", "keyword")
 	setRemoveRequestBody := `{"update_id":457214899,"message":{"message_id":3682,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1530123765,"text":"/remove"}}`
@@ -741,12 +674,12 @@ func TestHandler_HandlesInlineQueryWithPagination(t *testing.T) {
 
 func TestHandler_HandlesStickerAndSetsDefaultTags(t *testing.T) {
 	defer cleanUpDb()
-	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"A","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
+	requestBody := `{"update_id":457211708,"message":{"message_id":315,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524775382,"sticker":{"width":512,"height":512,"emoji":"😀","set_name":"VaultBoySet","thumb":{"file_id":"ThumbFileId","file_size":4670,"width":128,"height":128},"file_id":"StickerFileId","file_size":24458}}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
 
-	requestBody = `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":"VaultBoySet Fallout-Vault-Boy Fallout Vault Boy 😂","offset":""}}`
+	requestBody = `{"update_id":457211742,"inline_query":{"id":"913797545109391540","from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"query":" Fallout-Vault-Boy Fallout Vault Boy 😂","offset":""}}`
 	req, err, responseRecorder, handler = setupHttpHandler(t, requestBody)
 	handler.ServeHTTP(responseRecorder, req)
 
