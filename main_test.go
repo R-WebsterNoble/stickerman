@@ -25,7 +25,7 @@ func runTests(m *testing.M) int {
 		adminDb := setupTestDB(testDbName)
 		defer tearDownDB(adminDb, testDbName)
 	}
-	enableTestWaitGroup = true
+	currentlyTesting = true
 	run := m.Run()
 	return run
 }
