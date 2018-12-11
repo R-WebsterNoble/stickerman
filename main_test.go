@@ -123,17 +123,18 @@ func cleanUpDb() {
 	_, err = db.Exec(stickersCleanupQuery)
 	checkErr(err)
 
-	groupsCleanupQuery := `DELETE FROM groups g USING sessions s WHERE s.group_id = g.id and s.chat_id in (0, 12345)`
+	groupsCleanupQuery := `DELETE FROM groups g USING sessions s WHERE g.id <> 0 AND s.group_id = g.id and s.chat_id in (0, 12345)`
 	_, err = db.Exec(groupsCleanupQuery)
 	checkErr(err)
 
 	orphanedGroupsCleanupQuery := `  
       DELETE from groups g
-      where not exists
-      (select 1
-       from sessions s
-       where s.group_id = g.id
-      );`
+      WHERE g.id <> 0 AND
+      	NOT exists
+      	(SELECT 1
+      	 FROM sessions s
+      	 WHERE s.group_id = g.id
+      	);`
 	_, err = db.Exec(orphanedGroupsCleanupQuery)
 	checkErr(err)
 
