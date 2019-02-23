@@ -764,7 +764,7 @@ func TestHandler_AbleToJoinGroup(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have joined the group.\\nyou can re-join your previous group using /joinGroup " + usersGroup + "\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have joined the group.\\nYou can re-join your previous group using /joinGroup " + usersGroup + "\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
