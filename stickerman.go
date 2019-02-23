@@ -170,7 +170,7 @@ func processStickerMessage(message *Message) string {
 		//		testWaitGroup.Done()
 		//	}
 		//}()
-		return "That's a nice sticker. Send me some tags and I'll add them to it.\n\nI'll also setup some default tags for every sticker in the pack for you."
+		return "That's a nice sticker. Send me some tags and I'll add them to it." //\n\nI'll also setup some default tags for every sticker in the pack for you."
 	} else {
 		switch mode {
 		case "add":
