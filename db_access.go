@@ -379,12 +379,14 @@ where chat_id = $1`
 	return
 }
 
-func assignUserToGroup(chatId int64, groupGuid string) DbOperationStatus {
+func assignUserToGroup(chatId int64, groupGuid string) (DbOperationStatus, string) {
 
 	guid, err := uuid.Parse(groupGuid)
 	if err != nil {
-		return InvalidFormat
+		return InvalidFormat, ""
 	}
+
+	previousGroup := GetUserGroup(chatId)
 
 	query := `
 WITH groupId AS (
@@ -399,10 +401,10 @@ WHERE EXISTS(SELECT id FROM groupId) AND chat_id = $1 AND group_id <> (SELECT id
 	rowsAffected, err := result.RowsAffected()
 	checkErr(err)
 	if rowsAffected == 0 {
-		return NoChange
+		return NoChange, ""
 	}
 
-	return Success
+	return Success, previousGroup
 }
 
 func EscapeSql(s string) (result string) {

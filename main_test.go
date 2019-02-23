@@ -196,7 +196,9 @@ func TestHandler_HandlesMessage(t *testing.T) {
 		"Usage:\\n" +
 		"To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\\n" +
 		"\\n" +
-		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\"}"
+		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\\n" +
+		"\\n" +
+		`For information on how to share stickers with a friend type \"/help-groups\""}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -745,7 +747,7 @@ func TestHandler_AbleToGetGroup(t *testing.T) {
 	handler.ServeHTTP(responseRecorder, req)
 	usersGroup := GetUserGroup(12345)
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"Your group ID is \\\"" + usersGroup + "\\\".\\nOther users can join your group using\\n/JoinGroup " + usersGroup + "\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"Your group key is \\\"" + usersGroup + "\\\".\\nOther users can join your group using\\n/JoinGroup " + usersGroup + "\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -755,13 +757,14 @@ func TestHandler_AbleToJoinGroup(t *testing.T) {
 
 	getOrCreateUserGroup(0)
 	newGroupUuid := GetUserGroup(0)
+	usersGroup := GetUserGroup(12345)
 
 	requestBody := `{"update_id":457211650,"message":{"message_id":65,"from":{"id":12345,"is_bot":false,"first_name":"user","username":"user","language_code":"en-GB"},"chat":{"id":12345,"first_name":"user","username":"user","type":"private"},"date":1524692383,"text":"/JoinGroup ` + newGroupUuid + `","entities":[{"offset":0,"length":6,"type":"bot_command"}]}}`
 	req, err, responseRecorder, handler := setupHttpHandler(t, requestBody)
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You have moved into the group."}`
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have joined the group.\\nyou can re-join your previous group using /join-group " + usersGroup + "\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -776,7 +779,7 @@ func TestHandler_UnAbleToJoinGroupAlreadyIn(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := `{"method":"sendMessage","chat_id":12345,"text":"You are already in that group."}`
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have not moved group. \\n Either are already in that group, or the group key doesn't exist.\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -789,6 +792,6 @@ func TestHandler_UnAbleToJoinGroupinvalid(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"That Group Id is not in the correct format, I'm expecting something that looks like this:\\n/JoinGroup 123e4567-e89b-12d3-a456-426655440000.\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"That Group Id is not in the correct format, I'm expecting something that looks like this:\\n/JoinGroup 1234abc8-12Bb-cC12-12a0-12e456789abc.\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
