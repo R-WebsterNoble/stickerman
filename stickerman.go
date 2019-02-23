@@ -1,14 +1,8 @@
 package main
 
 import (
-	"encoding/json"
-	log "github.com/sirupsen/logrus"
-	"net/http"
-	"net/url"
-	"os"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 func processMessage(message *Message) (responseMessage string) {
@@ -160,22 +154,22 @@ func processKeywordMessage(chatId int64, messageText string) string {
 	return ""
 }
 
-var currentlyTesting = false
-var testWaitGroup sync.WaitGroup
+//var currentlyTesting = false
+//var testWaitGroup sync.WaitGroup
 
 func processStickerMessage(message *Message) string {
 	groupId, mode := SetUserStickerAndGetMode(message.Chat.ID, message.Sticker.FileID)
 	keywordsOnSticker := GetAllKeywordsForStickerFileId(message.Sticker.FileID, groupId)
 	if len(keywordsOnSticker) == 0 {
-		if currentlyTesting {
-			testWaitGroup.Add(1)
-		}
-		go func() {
-			addStickerSetDefaultTags(message.Sticker, groupId)
-			if currentlyTesting {
-				testWaitGroup.Done()
-			}
-		}()
+		//if currentlyTesting {
+		//	testWaitGroup.Add(1)
+		//}
+		//go func() {
+		//	addStickerSetDefaultTags(message.Sticker, groupId)
+		//	if currentlyTesting {
+		//		testWaitGroup.Done()
+		//	}
+		//}()
 		return "That's a nice sticker. Send me some tags and I'll add them to it.\n\nI'll also setup some default tags for every sticker in the pack for you."
 	} else {
 		switch mode {
@@ -198,47 +192,47 @@ func processStickerMessage(message *Message) string {
 	return ""
 }
 
-func addStickerSetDefaultTags(sticker *Sticker, groupId int64) {
-	safeSetName := url.QueryEscape(sticker.SetName)
-	getStickerSetUrl := "https://api.telegram.org/bot" + os.Getenv("TelegramBotApiKey") + "/getStickerSet?name=" + safeSetName
-	stickerSetResult := callGetStickerSetApi(getStickerSetUrl)
-	if stickerSetResult.Ok {
-		setTitleWords := strings.Fields(stickerSetResult.Result.Title)
-		keywordsArray := []string{sticker.SetName, strings.Join(setTitleWords, "-")}
-		keywordsArray = append(keywordsArray, setTitleWords...)
-		for _, sticker := range stickerSetResult.Result.Stickers {
-			keywordsArrayWithEmoji := append(keywordsArray, sticker.Emoji)
-			addKeywordsArrayToSticker(sticker.FileID, keywordsArrayWithEmoji, groupId)
-		}
-	} else {
+//func addStickerSetDefaultTags(sticker *Sticker, groupId int64) {
+//	safeSetName := url.QueryEscape(sticker.SetName)
+//	getStickerSetUrl := "https://api.telegram.org/bot" + os.Getenv("TelegramBotApiKey") + "/getStickerSet?name=" + safeSetName
+//	stickerSetResult := callGetStickerSetApi(getStickerSetUrl)
+//	if stickerSetResult.Ok {
+//		setTitleWords := strings.Fields(stickerSetResult.Result.Title)
+//		keywordsArray := []string{sticker.SetName, strings.Join(setTitleWords, "-")}
+//		keywordsArray = append(keywordsArray, setTitleWords...)
+//		for _, sticker := range stickerSetResult.Result.Stickers {
+//			keywordsArrayWithEmoji := append(keywordsArray, sticker.Emoji)
+//			addKeywordsArrayToSticker(sticker.FileID, keywordsArrayWithEmoji, groupId)
+//		}
+//	} else {
+//
+//	}
+//}
 
-	}
-}
-
-func callGetStickerSetApi(url string) GetStickerSetResult {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in http.NewRequest")
-		return GetStickerSetResult{false, Stickers{}}
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in client.Do")
-		return GetStickerSetResult{false, Stickers{}}
-	}
-	defer func() { checkErr(resp.Body.Close()) }()
-
-	var stickers GetStickerSetResult
-	err = json.NewDecoder(resp.Body).Decode(&stickers)
-	if err != nil {
-		log.WithFields(log.Fields{"url": url, "error": err}).Error("error decoding json")
-		return GetStickerSetResult{false, Stickers{}}
-	}
-
-	return stickers
-}
+//func callGetStickerSetApi(url string) GetStickerSetResult {
+//	req, err := http.NewRequest("GET", url, nil)
+//	if err != nil {
+//		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in http.NewRequest")
+//		return GetStickerSetResult{false, Stickers{}}
+//	}
+//
+//	client := &http.Client{}
+//	resp, err := client.Do(req)
+//	if err != nil {
+//		log.WithFields(log.Fields{"url": url, "error": err}).Error("error in client.Do")
+//		return GetStickerSetResult{false, Stickers{}}
+//	}
+//	defer func() { checkErr(resp.Body.Close()) }()
+//
+//	var stickers GetStickerSetResult
+//	err = json.NewDecoder(resp.Body).Decode(&stickers)
+//	if err != nil {
+//		log.WithFields(log.Fields{"url": url, "error": err}).Error("error decoding json")
+//		return GetStickerSetResult{false, Stickers{}}
+//	}
+//
+//	return stickers
+//}
 
 func addKeywordFromStickerReply(message *Message) (responseMessage string) {
 	stickerFileId := message.ReplyToMessage.Sticker.FileID

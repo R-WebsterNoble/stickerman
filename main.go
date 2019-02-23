@@ -6,7 +6,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 )
 
@@ -30,18 +29,18 @@ func main() {
 }
 
 func handler(responseWriter http.ResponseWriter, request *http.Request) {
-	if !currentlyTesting {
-		defer func() {
-			if err := recover(); err != nil {
-				//fmt.Fprintf(os.Stderr, "Panic: %s, StackTrace: %s", r, debug.Stack())
-				//fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
-				//log.Printf("Something went wrong", r)
-				log.WithFields(log.Fields{"err": err, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
-				//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
-				http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
-			}
-		}()
-	}
+	//if !currentlyTesting {
+	//	defer func() {
+	//		if err := recover(); err != nil {
+	//			//fmt.Fprintf(os.Stderr, "Panic: %s, StackTrace: %s", r, debug.Stack())
+	//			//fmt.Printf("Panic: %s, StackTrace: %s", r, debug.Stack())
+	//			//log.Printf("Something went wrong", r)
+	//			log.WithFields(log.Fields{"err": err, "stackTrace": string(debug.Stack())}).Error("Something went wrong")
+	//			//response, err = events.APIGatewayProxyResponse{StatusCode: 200}, nil
+	//			http.Error(responseWriter, "Something went wrong :(", http.StatusInternalServerError)
+	//		}
+	//	}()
+	//}
 	//fmt.Println(`{"request_body":` + strings.Replace(request.Body., "\n", "", -1) + `}`)
 	ProcessRequest(responseWriter, request)
 
