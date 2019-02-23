@@ -43,7 +43,7 @@ func processCommand(message *Message) string {
 			"\n" +
 			"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\n" +
 			"\n" +
-			"For information on how to share stickers with a friend type \"/help-groups\""
+			"For information on how to share stickers with a friend type \"/helpGroups\""
 	case "/add":
 		setUserMode(message.Chat.ID, "add")
 		return "Okay, send me some tags and I'll add them to the sticker."
@@ -58,7 +58,7 @@ func processCommand(message *Message) string {
 		usersGroupUuid := GetUserGroup(message.Chat.ID)
 		return "Your group key is \"" + usersGroupUuid + "\".\nOther users can join your group using\n/JoinGroup " + usersGroupUuid
 	case "/joingroup":
-		return "You must include another user's group id"
+		return "You must include another user's group id."
 	case "/help-group":
 		fallthrough
 	case "/help-groups":
@@ -70,12 +70,12 @@ func processCommand(message *Message) string {
 	case "/helpgroups":
 		fallthrough
 	case "/help groups":
-		return "Want to share your taged stickers with friends? You can join a group with them and all stickers you tag will be avalible to everyone in the group.\n" +
+		return "Want to share your taged stickers with friends? You can join a group with them and all the stickers you tag will be avalible to everyone in the group.\n" +
 			"\n" +
-			"You are given a secret group key when they start using this bot. You can see your key using /group.\n" +
-			"You can join a group using /joingroup <groupKey>\n" +
+			"You are given a secret group key when you start using this bot. You can see your key using /group.\n" +
+			"You can join someone's group using /joingroup <groupKey>\n" +
 			"\n" +
-			"Note: as the tags are attached to the group you won't be able to to see the stickers in your current group once you have swiched, but you can always switch back."
+			"Note: as the tags are attached to the group you won't be able to to see the stickers in your previous group once you have swiched, but you can always switch back."
 	default:
 		return processOtherCommand(message.Chat.ID, lowerCaseMessage)
 	}
@@ -123,7 +123,7 @@ func ProcessJoinGroup(chatId int64, messageText string) string {
 	switch status {
 	case Success:
 		return "You have joined the group.\n" +
-			"you can re-join your previous group using /join-group " + previousGroup
+			"You can re-join your previous group using /joinGroup " + previousGroup
 	case InvalidFormat:
 		return "That Group Id is not in the correct format, I'm expecting something that looks like this:\n/JoinGroup 1234abc8-12Bb-cC12-12a0-12e456789abc."
 	case NoChange:

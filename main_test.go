@@ -198,7 +198,7 @@ func TestHandler_HandlesMessage(t *testing.T) {
 		"\\n" +
 		"You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\\n" +
 		"\\n" +
-		`For information on how to share stickers with a friend type \"/help-groups\""}`
+		`For information on how to share stickers with a friend type \"/helpGroups\""}`
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
@@ -764,7 +764,7 @@ func TestHandler_AbleToJoinGroup(t *testing.T) {
 
 	handler.ServeHTTP(responseRecorder, req)
 	assert.IsType(t, err, nil)
-	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have joined the group.\\nyou can re-join your previous group using /join-group " + usersGroup + "\"}"
+	expected := "{\"method\":\"sendMessage\",\"chat_id\":12345,\"text\":\"You have joined the group.\\nyou can re-join your previous group using /joinGroup " + usersGroup + "\"}"
 	assert.Equal(t, expected, responseRecorder.Body.String())
 }
 
