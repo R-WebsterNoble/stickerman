@@ -61,6 +61,8 @@ func processCommand(message *Message) string {
 		return "You must include another user's group id"
 	case "/help-group":
 		fallthrough
+	case "/help-groups":
+		fallthrough
 	case "/help group":
 		fallthrough
 	case "/helpgroup":
