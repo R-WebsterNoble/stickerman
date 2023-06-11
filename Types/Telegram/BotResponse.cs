@@ -1,4 +1,4 @@
-﻿namespace StickerManBot.Types;
+﻿namespace StickerManBot.Types.Telegram;
 
 public class BotResponse
 {

@@ -1,5 +1,9 @@
-global using StickerManBot.Types;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Microsoft.Extensions.Http;
+using Refit;
 using StickerManBot;
+using StickerManBot.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,13 +12,31 @@ builder.Services.AddOptions<StickerManBotAuthenticationSchemeOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-builder.Services.AddControllers();
-
 builder.Services.AddAuthentication("StickerManBotAuthentication")
     .AddScheme<StickerManBotAuthenticationSchemeOptions, StickerManBotAuthenticationHandler>(
-        "StickerManBotAuthentication", _ => { });
+        "StickerManBotAuthentication", null);
+
+builder.Services
+    .AddRefitClient<IE621Api>()
+    .ConfigureHttpClient((provider, client) =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    client.BaseAddress = new Uri(configuration.GetValue<string>("e621Api:Url")); 
+    var authenticationString = $"{configuration.GetValue<string>("e621Api:Username")}:{configuration.GetValue<string>("e621Api:Key")}";
+    var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+    client.DefaultRequestHeaders.Accept.Clear();
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+});
+
+builder.Services.AddControllers();
 
 var app = builder.Build();
+//
+// var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
+// var typedHttpClientFactory = app.Services.GetRequiredService<ITypedHttpClientFactory<StickerManBotController>>();
+// var httpClient = httpClientFactory.CreateClient("");
+// var stickerManBotController = typedHttpClientFactory.CreateClient(httpClient);
 
 app.UseMiddleware<RequestLoggerMiddleware>();
 
