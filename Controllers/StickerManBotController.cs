@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Cryptography;
-using System.Text;
+﻿using Microsoft.AspNetCore.Mvc;
 using StickerManBot.Types.Telegram;
 
 namespace StickerManBot.Controllers;
@@ -10,20 +7,29 @@ namespace StickerManBot.Controllers;
 [Route("~/")]
 public class StickerManBotController : Controller
 {
+    private readonly IConfiguration _config;
     private readonly IE621Api _e621Api;
+    private readonly ITelegramApi _telegramApi;
 
-    public StickerManBotController(IE621Api e621Api)
+    public StickerManBotController(IConfiguration config, IE621Api e621Api, ITelegramApi telegramApi)
     {
+        _config = config;
         _e621Api = e621Api;
+        _telegramApi = telegramApi;
     }
 
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] Update update)
     {
-        if (update.message == null)
+        if (update.message == null || update.message.chat == null)
             return Ok();
 
-        if (update.message.sticker == null)
+        var message = update.message.reply_to_message ?? update.message;
+
+        var stickerFileId = message.sticker?.file_id;
+        var stickerFileUniqueId = message.sticker?.file_unique_id;
+
+        if (stickerFileId == null || stickerFileUniqueId == null)
             return Ok(new BotResponse
             {
                 chat_id = update.message.chat.id,
@@ -37,20 +43,48 @@ public class StickerManBotController : Controller
                 "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\n" +
                 "For information on how to share stickers with a friend type \"/helpGroups\""
             });
-        ;
-        await _e621Api.Upload(
-            new blah
-            {
-                Upload = new Upload
+
+        var posts = await _e621Api.GetPosts(stickerFileUniqueId);
+
+        if (posts.posts.Length == 0)
+        {
+            var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = stickerFileId });
+
+            await _e621Api.Upload(
+                new blah
                 {
-                    direct_url = "https://static1.e926.net/data/c9/e8/c9e85c6ecc8f80af55914d8e24689a85.png",
-                    tag_string = "green_body paws tail fangs",
-                    source = "",
-                    rating = "e"
+                    Upload = new Upload
+                    {
+                        direct_url = $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
+                        tag_string = update.message.text?? "",
+                        source = stickerFileUniqueId,
+                        rating = "e"
+                    }
+                });
+
+            return Ok(new BotResponse
+            {
+                chat_id = update.message.chat.id,
+                method = "sendMessage",
+                text = "Created new Sticker"
+            });
+        }
+
+        await _e621Api.Update(posts.posts.First().id,
+            new blah2
+            {
+                Post = new Post
+                {
+                    tag_string_diff = update.message.text ?? ""
                 }
             });
 
-        return Ok();
+        return Ok(new BotResponse
+        {
+            chat_id = update.message.chat.id,
+            method = "sendMessage",
+            text = "Updated existing Sticker"
+        });
     }
 
 }

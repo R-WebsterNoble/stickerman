@@ -10,9 +10,11 @@ public class Message
 {
     public int message_id { get; set; }
     public User? from { get; set; }
-    public Chat chat { get; set; }
+    public Chat? chat { get; set; }
     public int date { get; set; }
     public Sticker? sticker { get; set; }
+    public Message? reply_to_message { get; set; }
+    public string? text { get; set; }
 }
 
 public class User
