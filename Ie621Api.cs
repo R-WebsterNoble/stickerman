@@ -18,6 +18,8 @@ public interface IE621Api
     Task Update(int Post_ID, UpdateWrapper blah);
 }
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 public class UpdateWrapper
 {
     public Post Post { get; set; }
@@ -40,3 +42,5 @@ public class Upload
     public string source { get; set; }
     public string rating { get; set; }
 }
+
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
