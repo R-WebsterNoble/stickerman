@@ -1,9 +1,19 @@
-﻿namespace StickerManBot.Types.Telegram;
+﻿using Newtonsoft.Json;
+
+namespace StickerManBot.Types.Telegram;
+
+public class BotResponse
+{
+    public string method { get; set; }
+    public long? chat_id { get; set; }
+    public string text { get; set; }
+}
 
 public class Update
 {
     public int update_id { get; set; }
     public Message? message { get; set; }
+    public Inline_Query? inline_query { get; set; }
 }
 
 public class Message
@@ -47,4 +57,31 @@ public class Sticker
     public string file_id { get; set; }
     public string file_unique_id { get; set; }
     public int file_size { get; set; }
+}
+
+
+public class Inline_Query
+{
+    public string id { get; set; }
+    public string chat_type { get; set; }
+    public string query { get; set; }
+    public string offset { get; set; }
+}
+
+
+public class AnswerInlineQuery
+{
+    public string method { get; set; }
+    public string inline_query_id { get; set; }
+    public Result[] results { get; set; }
+    public int cache_time { get; set; }
+    public bool is_personal { get; set; }
+    public string next_offset { get; set; }
+}
+
+public class Result
+{
+    public string type { get; set; }
+    public string id { get; set; }
+    public string sticker_file_id { get; set; }
 }

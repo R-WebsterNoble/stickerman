@@ -6,16 +6,19 @@ namespace StickerManBot;
 public interface IE621Api
 {
     [Get("/posts?tags=Source:{id}")]
-    Task<Posts> GetPosts(string id);
+    Task<Posts> GetPost(string id);
+
+    [Get("/posts.json?limit=50&tags={tags}")]
+    Task<Posts> GetPosts(string tags);
 
     [Post("/uploads.json")]
-    Task Upload(blah upload);
+    Task Upload(UploadWrapper upload);
 
     [Patch("/posts/{Post_ID}.json")]
-    Task Update(int Post_ID, blah2 blah);
+    Task Update(int Post_ID, UpdateWrapper blah);
 }
 
-public class blah2
+public class UpdateWrapper
 {
     public Post Post { get; set; }
 }
@@ -25,7 +28,7 @@ public class Post
     public string tag_string_diff { get; set; }
 }
 
-public class blah
+public class UploadWrapper
 {
     public Upload Upload { get; set; }
 }
