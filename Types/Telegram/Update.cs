@@ -1,13 +1,11 @@
-﻿using Newtonsoft.Json;
-
-namespace StickerManBot.Types.Telegram;
+﻿namespace StickerManBot.Types.Telegram;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
 public class BotResponse
 {
     public string method { get; set; }
-    public long? chat_id { get; set; }
+    public long chat_id { get; set; }
     public string text { get; set; }
 }
 
@@ -21,8 +19,8 @@ public class Update
 public class Message
 {
     public int message_id { get; set; }
-    public User? from { get; set; }
-    public Chat? chat { get; set; }
+    // public User? from { get; set; }
+    public Chat chat { get; set; }
     public int date { get; set; }
     public Sticker? sticker { get; set; }
     public Message? reply_to_message { get; set; }

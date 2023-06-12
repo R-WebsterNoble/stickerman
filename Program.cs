@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(_ => { });
 
-builder.Services.AddTransient<HttpLoggingHandler>();
+//builder.Services.AddTransient<HttpLoggingHandler>();
 
 builder.Services.AddOptions<StickerManBotAuthenticationSchemeOptions>()
     .BindConfiguration("StickerManBotAuthenticationSchemeOptions")
@@ -41,16 +41,12 @@ builder.Services
         var token = configuration.GetValue<string>("TelegramApiToken");
         client.BaseAddress = new Uri($"https://api.telegram.org/bot{token}");
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    }).AddHttpMessageHandler<HttpLoggingHandler>();
+    });//.AddHttpMessageHandler<HttpLoggingHandler>();
 
 builder.Services.AddControllers();
 
 var app = builder.Build();
-//
-// var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
-// var typedHttpClientFactory = app.Services.GetRequiredService<ITypedHttpClientFactory<StickerManBotController>>();
-// var httpClient = httpClientFactory.CreateClient("");
-// var stickerManBotController = typedHttpClientFactory.CreateClient(httpClient);
+
 
 app.UseMiddleware<RequestLoggerMiddleware>();
 
