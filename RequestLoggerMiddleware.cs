@@ -32,7 +32,7 @@ public class RequestLoggerMiddleware
         var requestBody = Encoding.UTF8.GetString(buffer);
         context.Request.Body.Seek(0, SeekOrigin.Begin);
 
-        _logger.LogInformation("Request Body:{requestBody}", requestBody);
+        _logger.LogInformation("Request Body:{requestBody}", requestBody.Replace('\n',' '));
 
         var originalBodyStream = context.Response.Body;
 
