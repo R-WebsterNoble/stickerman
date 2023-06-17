@@ -64,10 +64,9 @@ public class StickerManBotController : Controller
             message = message.reply_to_message;
         }
 
-        var stickerFileId = message.sticker?.file_id;
-        var stickerFileUniqueId = message.sticker?.file_unique_id;
+        var sticker = message.sticker;
 
-        if (stickerFileId == null || stickerFileUniqueId == null)
+        if (sticker == null)
             return new BotResponse
             {
                 chat_id = message.chat.id,
@@ -82,11 +81,11 @@ public class StickerManBotController : Controller
                        "For information on how to share stickers with a friend type \"/helpGroups\""
             };
 
-        var posts = await _e621Api.GetPost(stickerFileUniqueId);
+        var posts = await _e621Api.GetPost(sticker.file_unique_id);
 
         if (posts.posts.Length == 0)
         {
-            var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = stickerFileId });
+            var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = sticker.file_id });
 
             await _e621Api.Upload(
                 new UploadWrapper
@@ -95,8 +94,8 @@ public class StickerManBotController : Controller
                     {
                         direct_url =
                             $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
-                        tag_string = message.text ?? "",
-                        source = $"{stickerFileUniqueId}%0A{stickerFileId}%0A{message.chat.id}%0A{message.chat.username}",
+                        tag_string = $"Copyright:{sticker.set_name}",
+                        source = $"{sticker.file_unique_id}%0A{sticker.file_id}%0A{message.chat.id}%0A{message.chat.username}",
                         rating = "e"
                     }
                 });
