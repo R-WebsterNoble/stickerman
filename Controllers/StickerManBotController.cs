@@ -129,24 +129,31 @@ public class StickerManBotController : Controller
     
     private async Task<AnswerInlineQuery> ProcessInlineQuery(Inline_Query inlineQuery)
     {
-        var posts = await _e621Api.GetPosts($"{inlineQuery.query}*");
+        _ = int.TryParse(inlineQuery.offset, out var page);
 
-        var enumerable = posts.posts.Where(p => p.sources.Length == 3 && p.sources[2].StartsWith("https://api.telegram.org")).ToArray();
-        var results = enumerable.Select(p => new Result
+        if (page == 0)
+            page = 1;
+
+        var posts = await _e621Api.GetPosts(page, $"{inlineQuery.query}*");
+
+        var results = posts.posts//.Where(p => p.sources.Length == 3 && p.sources[2].StartsWith("https://api.telegram.org")).
+        .Select(p => new Result
         {
             type = "sticker",
             id = p.id.ToString(),
             sticker_file_id = p.sources[1]
-        }).ToArray();
+        });
+
+        var nextPage = posts.posts.Length < 50 ? "" : (page + 1).ToString();
 
         return new AnswerInlineQuery
         {
             method = "answerInlineQuery",
             inline_query_id = inlineQuery.id,
             results = results,
-            cache_time = 0,
-            is_personal = true,
-            next_offset = ""
+            cache_time = 10,
+            is_personal = false,
+            next_offset = nextPage
         };
     }
 }

@@ -8,8 +8,8 @@ public interface IE621Api
     [Get("/posts?tags=Source:{id}")]
     Task<Posts> GetPost(string id);
 
-    [Get("/posts.json?limit=50&tags={tags}")]
-    Task<Posts> GetPosts(string tags);
+    [Get("/posts.json?limit=50&page={page}&tags={tags}")]
+    Task<Posts> GetPosts(int page, string tags);
 
     [Post("/uploads.json")]
     Task Upload(UploadWrapper upload);
