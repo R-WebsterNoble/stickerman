@@ -1,6 +1,8 @@
-﻿namespace StickerManBot.Types.Telegram;
-
+﻿// ReSharper disable UnusedMember.Global
+#pragma warning disable IDE1006
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
+namespace StickerManBot.Types.Telegram;
 
 public class BotResponse
 {
@@ -13,13 +15,13 @@ public class Update
 {
     public int update_id { get; set; }
     public Message? message { get; set; }
-    public Inline_Query? inline_query { get; set; }
+    public InlineQuery? inline_query { get; set; }
 }
 
 public class Message
 {
     public int message_id { get; set; }
-    // public User? from { get; set; }
+    public User? from { get; set; }
     public Chat chat { get; set; }
     public int date { get; set; }
     public Sticker? sticker { get; set; }
@@ -60,9 +62,10 @@ public class Sticker
 }
 
 
-public class Inline_Query
+public class InlineQuery
 {
     public string id { get; set; }
+    public User from { get; set; }
     public string chat_type { get; set; }
     public string query { get; set; }
     public string offset { get; set; }
@@ -79,11 +82,22 @@ public class AnswerInlineQuery
     public string next_offset { get; set; }
 }
 
+public class AnswerInlineQueryWithButton : AnswerInlineQuery
+{
+    public InlineQueryResultsButton button { get; set; }
+}
+
 public class Result
 {
     public string type { get; set; }
     public string id { get; set; }
     public string sticker_file_id { get; set; }
+}
+
+public class InlineQueryResultsButton
+{
+    public string text { get; set; }
+    public string start_parameter { get; set; }
 }
 
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.

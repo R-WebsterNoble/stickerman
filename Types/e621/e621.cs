@@ -1,6 +1,7 @@
-﻿namespace StickerManBot.Types.e621;
-
+﻿// ReSharper disable UnusedMember.Global
+#pragma warning disable IDE1006
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+namespace StickerManBot.Types.e621;
 
 public class Posts
 {
@@ -115,5 +116,3 @@ public class Result
     public int file_size { get; set; }
     public string file_path { get; set; }
 }
-
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.

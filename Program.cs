@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using Refit;
 using StickerManBot;
-using static StickerManBot.RequestLoggerMiddleware;
+using StickerManBot.services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +42,8 @@ builder.Services
         client.BaseAddress = new Uri($"https://api.telegram.org/bot{token}");
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     });//.AddHttpMessageHandler<HttpLoggingHandler>();
+
+builder.Services.AddScoped<StickerManDbService>();
 
 builder.Services.AddControllers();
 

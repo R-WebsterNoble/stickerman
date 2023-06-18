@@ -1,3 +1,0 @@
-﻿namespace StickerManBot.Types.Telegram;
-
-

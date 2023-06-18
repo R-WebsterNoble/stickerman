@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using StickerManBot.services;
 using StickerManBot.Types.Telegram;
 using Result = StickerManBot.Types.Telegram.Result;
 
@@ -13,13 +14,15 @@ public class StickerManBotController : Controller
     private readonly IConfiguration _config;
     private readonly IE621Api _e621Api;
     private readonly ITelegramApi _telegramApi;
+    private readonly StickerManDbService _stickerManDbService;
 
-    public StickerManBotController(ILogger<StickerManBotController> logger, IConfiguration config, IE621Api e621Api, ITelegramApi telegramApi)
+    public StickerManBotController(ILogger<StickerManBotController> logger, IConfiguration config, IE621Api e621Api, ITelegramApi telegramApi, StickerManDbService stickerManDbService)
     {
         _logger = logger;
         _config = config;
         _e621Api = e621Api;
         _telegramApi = telegramApi;
+        _stickerManDbService = stickerManDbService;
     }
 
     [HttpPost]
@@ -67,7 +70,17 @@ public class StickerManBotController : Controller
         var sticker = message.sticker;
 
         if (sticker == null)
-            return new BotResponse
+            if (message.text == "/start ImOver18")
+            {
+                await _stickerManDbService.SetUserAgeVerified(message.from!.id);
+                return new BotResponse
+                {
+                    chat_id = message.chat.id,
+                    method = "sendMessage",
+                    text = "You have verified your age"
+                };
+            }
+            else return new BotResponse
             {
                 chat_id = message.chat.id,
                 method = "sendMessage",
@@ -126,8 +139,25 @@ public class StickerManBotController : Controller
         };
     }
     
-    private async Task<AnswerInlineQuery> ProcessInlineQuery(Inline_Query inlineQuery)
+    private async Task<AnswerInlineQuery> ProcessInlineQuery(InlineQuery inlineQuery)
     {
+        if(!await _stickerManDbService.IsUserAgeVerified(inlineQuery.from.id))
+            return new AnswerInlineQueryWithButton
+            {
+                method = "answerInlineQuery",
+                inline_query_id = inlineQuery.id,
+                results = ArraySegment<Result>.Empty,
+                cache_time = 0,
+                is_personal = true,
+                next_offset = "",
+                button = new InlineQueryResultsButton
+                {
+                    text = "Click here if you are over the age of 18.",
+                    start_parameter = "ImOver18"
+                }
+
+            };
+
         _ = int.TryParse(inlineQuery.offset, out var page);
 
         if (page == 0)
