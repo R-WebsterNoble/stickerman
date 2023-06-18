@@ -180,8 +180,8 @@ public class StickerManBotController : Controller
             method = "answerInlineQuery",
             inline_query_id = inlineQuery.id,
             results = results,
-            cache_time = 10,
-            is_personal = false,
+            cache_time = 0,
+            is_personal = true,
             next_offset = nextPage
         };
     }
