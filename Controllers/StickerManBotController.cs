@@ -69,30 +69,23 @@ public class StickerManBotController : Controller
 
         var sticker = message.sticker;
 
-
         if (sticker != null)
             {
-            if (sticker.is_animated)
-                return new BotResponse
-                {
-                    chat_id = message.chat.id,
-                    method = "sendMessage",
-                    text = "This bot is in Beta. Animated stickers are not supported... yet"
-            };
-
         var posts = await _e621Api.GetPost(sticker.file_unique_id);
 
         if (posts.posts.Length == 0)
         {
-            var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = sticker.file_id });
+                var fileIdToGet = sticker.is_animated ? sticker.thumbnail!.file_id : sticker.file_id;
+                var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = fileIdToGet });
 
-                if(!fileResponse.ok)
+                if (!fileResponse.ok)
                     return new BotResponse
                     {
                         chat_id = message.chat.id,
                         method = "sendMessage",
                         text = "Something went wrong when getting details for this sticker from Telegram"
                     };
+
 
             await _e621Api.Upload(
                 new UploadWrapper
@@ -101,8 +94,8 @@ public class StickerManBotController : Controller
                     {
                         direct_url =
                             $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
-                        tag_string = $"Copyright:{sticker.set_name}",
-                        source = $"{sticker.file_unique_id}%0A{sticker.file_id}%0A{message.chat.id}%0A{message.chat.username}",
+                            tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "Meta:animated" : "")}",
+                            source = sticker.file_unique_id,
                         rating = "e"
                     }
                 });

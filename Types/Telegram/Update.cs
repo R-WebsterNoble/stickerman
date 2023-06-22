@@ -59,8 +59,8 @@ public class Sticker
     public string file_id { get; set; }
     public string file_unique_id { get; set; }
     public int file_size { get; set; }
+    public PhotoSize? thumbnail { get; set; }
 }
-
 
 public class InlineQuery
 {
@@ -99,5 +99,15 @@ public class InlineQueryResultsButton
     public string text { get; set; }
     public string start_parameter { get; set; }
 }
+
+public class PhotoSize
+{
+    public string file_id { get; set; }
+    public string file_unique_id { get; set; }
+    public int file_size { get; set; }
+    public int width { get; set; }
+    public int height { get; set; }
+}
+
 
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
