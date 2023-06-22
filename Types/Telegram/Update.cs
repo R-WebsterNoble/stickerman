@@ -11,6 +11,11 @@ public class BotResponse
     public string text { get; set; }
 }
 
+public class MarkdownBotResponse : BotResponse
+{
+    public string parse_mode => "MarkdownV2";
+}
+
 public class Update
 {
     public int update_id { get; set; }

@@ -1,8 +1,7 @@
-﻿using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using StickerManBot.services;
-using StickerManBot.Types.e621;
 using StickerManBot.Types.Telegram;
 using Result = StickerManBot.Types.Telegram.Result;
 
@@ -112,18 +111,16 @@ public class StickerManBotController : Controller
                     text = "I've not seen that sticker before. Please send me some tags for it!"
                 };
             }
-
             var tags = posts.posts.First().tags;
 
-            var allTags = tags.copyright.Concat(tags.general);
+            var allTags = tags.copyright.Select(t=>$"[{t}](https://t.me/addstickers/{t})")
+                .Concat(tags.general.Select(t=> Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1")));
 
-            return new BotResponse
+            return new MarkdownBotResponse()
             {
                 chat_id = message.chat.id,
                 method = "sendMessage",
-                text = "That's a nice sticker!\n" +
-                       "\n" +
-                       "Here are all the existing tag(s) currently applied to that sticker:\n" +
+                text = "Here are all the existing tags currently applied to that sticker:\n" +
                        string.Join('\n', allTags)
             };
         }
