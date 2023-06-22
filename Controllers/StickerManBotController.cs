@@ -121,13 +121,17 @@ public class StickerManBotController : Controller
             };
         }
 
-        if(!string.IsNullOrWhiteSpace(message.text))
-            await _e621Api.Update(posts.posts.First().id,
-                new UpdateWrapper
-                {
-                    Post = new Post
+            var tags = posts.posts.First().tags;
+            var allTags = tags.copyright.Concat(tags.general);
+            return new BotResponse
                     {
-                        tag_string_diff = message.text
+                chat_id = message.chat.id,
+                method = "sendMessage",
+                text = "That's a nice sticker!\n" +
+                       "\n" +
+                       "Here are all the existing tag(s) currently applied to that sticker:\n" +
+                       string.Join('\n', allTags)
+            };
                     }
                 });
 
