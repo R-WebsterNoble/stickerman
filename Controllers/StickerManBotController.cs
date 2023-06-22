@@ -109,7 +109,11 @@ public class StickerManBotController : Controller
         }
 
             var tags = posts.posts.First().tags;
-            var allTags = tags.copyright.Concat(tags.general);
+
+            var allTags = tags.copyright
+                .Concat(tags.meta)
+                .Concat(tags.general);
+
             return new BotResponse
                     {
                 chat_id = message.chat.id,
