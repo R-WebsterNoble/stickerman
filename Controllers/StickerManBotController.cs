@@ -1,6 +1,8 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using StickerManBot.services;
+using StickerManBot.Types.e621;
 using StickerManBot.Types.Telegram;
 using Result = StickerManBot.Types.Telegram.Result;
 
@@ -69,12 +71,13 @@ public class StickerManBotController : Controller
 
         var sticker = message.sticker;
 
+        var userId = message.from!.id;
         if (sticker != null)
-            {
-        var posts = await _e621Api.GetPost(sticker.file_unique_id);
-
-        if (posts.posts.Length == 0)
         {
+            var posts = await _e621Api.GetPost(sticker.file_unique_id);
+
+            if (posts.posts.Length == 0)
+            {
                 var fileIdToGet = sticker.is_animated ? sticker.thumbnail!.file_id : sticker.file_id;
                 var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = fileIdToGet });
 
@@ -85,37 +88,37 @@ public class StickerManBotController : Controller
                         method = "sendMessage",
                         text = "Something went wrong when getting details for this sticker from Telegram"
                     };
+                
 
-
-            await _e621Api.Upload(
-                new UploadWrapper
-                {
-                    Upload = new Upload
+                var uploadResult = await _e621Api.Upload(
+                    new UploadWrapper
                     {
-                        direct_url =
-                            $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
-                            tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "Meta:animated" : "")}",
-                            source = sticker.file_unique_id,
-                        rating = "e"
-                    }
-                });
+                        Upload = new Upload
+                        {
+                            direct_url =
+                                $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
+                            tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "animated" : "")}",
+                            source = $"{sticker.file_unique_id}%0A{sticker.file_id}",
+                            rating = "e"
+                        }
+                    });
 
-            return new BotResponse
-            {
-                chat_id = message.chat.id,
-                method = "sendMessage",
-                text = "Created new Sticker"
-            };
-        }
+                await _stickerManDbService.SetUserPost(userId, sticker.file_unique_id, uploadResult.post_id);
+
+                return new BotResponse
+                {
+                    chat_id = message.chat.id,
+                    method = "sendMessage",
+                    text = "I've not seen that sticker before. Please send me some tags for it!"
+                };
+            }
 
             var tags = posts.posts.First().tags;
 
-            var allTags = tags.copyright
-                .Concat(tags.meta)
-                .Concat(tags.general);
+            var allTags = tags.copyright.Concat(tags.general);
 
             return new BotResponse
-                    {
+            {
                 chat_id = message.chat.id,
                 method = "sendMessage",
                 text = "That's a nice sticker!\n" +
@@ -123,15 +126,61 @@ public class StickerManBotController : Controller
                        "Here are all the existing tag(s) currently applied to that sticker:\n" +
                        string.Join('\n', allTags)
             };
-                    }
-                });
+        }
+
+        if(string.IsNullOrWhiteSpace(message.text))
+            return DefaultResponse();
+
+        if (message.text.Length > 0 && message.text[0] == '/')
+        {
+            if (message.text == "/start ImOver18")
+            {
+                await _stickerManDbService.SetUserAgeVerified(userId);
+                return new BotResponse
+                {
+                    chat_id = message.chat.id,
+                    method = "sendMessage",
+                    text = "You have verified your age"
+                };
+            }
+
+            return DefaultResponse();
+        }
+
+        var userPostId = await _stickerManDbService.GetUserPostFromSession(userId);
+        if(userPostId == null)
+            return DefaultResponse();
+
+        await _e621Api.Update(userPostId.Value, new UpdateWrapper
+        {
+            Post = new Post
+            {
+                tag_string_diff = message.text
+            }
+        });
 
         return new BotResponse
         {
             chat_id = message.chat.id,
             method = "sendMessage",
-            text = "Updated existing Sticker"
+            text = "Added tags to sticker!"
         };
+
+        BotResponse DefaultResponse()
+        {
+            return new BotResponse
+            {
+                chat_id = message.chat.id,
+                method = "sendMessage",
+                text = "Hi, I'm Sticker Manager Bot.\n" +
+                       "I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
+                       "\n" +
+                       "Usage:\n" +
+                       "To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
+                       "\n" +
+                       "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
+            };
+        }
     }
     
     private async Task<AnswerInlineQuery> ProcessInlineQuery(InlineQuery inlineQuery)

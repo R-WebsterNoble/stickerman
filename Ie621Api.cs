@@ -12,7 +12,7 @@ public interface IE621Api
     Task<Posts> GetPosts(int page, string tags);
 
     [Post("/uploads.json")]
-    Task Upload(UploadWrapper upload);
+    Task<UploadResult> Upload(UploadWrapper upload);
 
     [Patch("/posts/{Post_ID}.json")]
     Task Update(int Post_ID, UpdateWrapper blah);

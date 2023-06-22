@@ -116,3 +116,11 @@ public class Result
     public int file_size { get; set; }
     public string file_path { get; set; }
 }
+
+
+public class UploadResult
+{
+    public bool success { get; set; }
+    public string location { get; set; }
+    public int post_id { get; set; }
+}
