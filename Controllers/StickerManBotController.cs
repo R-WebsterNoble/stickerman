@@ -69,29 +69,15 @@ public class StickerManBotController : Controller
 
         var sticker = message.sticker;
 
-        if (sticker == null)
-            if (message.text == "/start ImOver18")
+
+        if (sticker != null)
             {
-                await _stickerManDbService.SetUserAgeVerified(message.from!.id);
+            if (sticker.is_animated)
                 return new BotResponse
                 {
                     chat_id = message.chat.id,
                     method = "sendMessage",
-                    text = "You have verified your age"
-                };
-            }
-            else return new BotResponse
-            {
-                chat_id = message.chat.id,
-                method = "sendMessage",
-                text = "Hi, I'm Sticker Manager Bot.\n" +
-                       "I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
-                       "\n" +
-                       "Usage:\n" +
-                       "To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
-                       "\n" +
-                       "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for.\n" +
-                       "For information on how to share stickers with a friend type \"/helpGroups\""
+                    text = "This bot is in Beta. Animated stickers are not supported... yet"
             };
 
         var posts = await _e621Api.GetPost(sticker.file_unique_id);
@@ -99,6 +85,14 @@ public class StickerManBotController : Controller
         if (posts.posts.Length == 0)
         {
             var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = sticker.file_id });
+
+                if(!fileResponse.ok)
+                    return new BotResponse
+                    {
+                        chat_id = message.chat.id,
+                        method = "sendMessage",
+                        text = "Something went wrong when getting details for this sticker from Telegram"
+                    };
 
             await _e621Api.Upload(
                 new UploadWrapper
