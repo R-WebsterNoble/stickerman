@@ -73,56 +73,7 @@ public class StickerManBotController : Controller
         var userId = message.from!.id;
         if (sticker != null)
         {
-            var posts = await _e621Api.GetPost(sticker.file_unique_id);
-
-            if (posts.posts.Length == 0)
-            {
-                var fileIdToGet = sticker.is_animated ? sticker.thumbnail!.file_id : sticker.file_id;
-                var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = fileIdToGet });
-
-                if (!fileResponse.ok)
-                    return new BotResponse
-                    {
-                        chat_id = message.chat.id,
-                        method = "sendMessage",
-                        text = "Something went wrong when getting details for this sticker from Telegram"
-                    };
-                
-
-                var uploadResult = await _e621Api.Upload(
-                    new UploadWrapper
-                    {
-                        Upload = new Upload
-                        {
-                            direct_url =
-                                $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
-                            tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "animated" : "")}",
-                            source = $"{sticker.file_unique_id}%0A{sticker.file_id}",
-                            rating = "e"
-                        }
-                    });
-
-                await _stickerManDbService.SetUserPost(userId, sticker.file_unique_id, uploadResult.post_id);
-
-                return new BotResponse
-                {
-                    chat_id = message.chat.id,
-                    method = "sendMessage",
-                    text = "I've not seen that sticker before. Please send me some tags for it!"
-                };
-            }
-            var tags = posts.posts.First().tags;
-
-            var allTags = tags.copyright.Select(t=>$"[{t}](https://t.me/addstickers/{t})")
-                .Concat(tags.general.Select(t=> Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1")));
-
-            return new MarkdownBotResponse()
-            {
-                chat_id = message.chat.id,
-                method = "sendMessage",
-                text = "Here are all the existing tags currently applied to that sticker:\n" +
-                       string.Join('\n', allTags)
-            };
+            return await ProcessSticker(message, sticker, userId);
         }
 
         if(string.IsNullOrWhiteSpace(message.text))
@@ -148,9 +99,9 @@ public class StickerManBotController : Controller
         if(userPostId == null)
             return DefaultResponse();
 
-        await _e621Api.Update(userPostId.Value, new UpdateWrapper
+        await _e621Api.Update(userPostId.Value, new UpdateRequest
         {
-            Post = new Post
+            post = new UpdateRequest.Post
             {
                 tag_string_diff = message.text
             }
@@ -179,7 +130,84 @@ public class StickerManBotController : Controller
             };
         }
     }
-    
+
+    private async Task<BotResponse> ProcessSticker(Message message, Sticker sticker, long userId)
+    {
+        var posts = await _e621Api.GetPost(sticker.file_unique_id);
+
+        if (posts.posts.Length != 0)
+        {
+            var tags = posts.posts.First().tags;
+
+            var allTags = tags.copyright.Select(t => $"[{t}](https://t.me/addstickers/{t})")
+                .Concat(tags.general.Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1")));
+
+            return new MarkdownBotResponse()
+            {
+                chat_id = message.chat.id,
+                method = "sendMessage",
+                text = "Here are all the existing tags currently applied to that sticker:\n" +
+                       string.Join('\n', allTags)
+            };
+        }
+
+        var fileIdToGet = sticker.is_animated ? sticker.thumbnail!.file_id : sticker.file_id;
+        var fileResponse = await _telegramApi.GetFile(new GetFileRequest { file_id = fileIdToGet });
+
+        if (!fileResponse.ok)
+            return new BotResponse
+            {
+                chat_id = message.chat.id,
+                method = "sendMessage",
+                text = "Something went wrong when getting details for this sticker from Telegram"
+            };
+
+        var userE621ApiKey = await GetUserE621ApiKey(userId);
+        
+        var authenticationString = $"u{userId}:{userE621ApiKey}";
+        var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
+        var uploadResult = await _e621Api.Upload($"basic {base64EncodedAuthenticationString}", 
+            new UploadRequest
+            {
+                upload = new UploadRequest.Upload
+                {
+                    direct_url =
+                        $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
+                    tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "animated" : "")}",
+                    source = $"{sticker.file_unique_id}%0A{sticker.file_id}",
+                    rating = "e"
+                }
+            });
+
+        await _stickerManDbService.SetUserPost(userId, sticker.file_unique_id, uploadResult.post_id, userE621ApiKey);
+
+        return new BotResponse
+        {
+            chat_id = message.chat.id,
+            method = "sendMessage",
+            text = "I've not seen that sticker before. Please send me some tags for it!"
+        };
+    }
+
+    private async Task<string> GetUserE621ApiKey(long userId)
+    {
+        var userE621ApiKey = await _stickerManDbService.GetUserE621ApiKey(userId);
+        if (userE621ApiKey != null)
+            return userE621ApiKey;
+
+        var e621User = await _e621Api.CreateUser(new CreateUserRequest
+        {
+            user = new CreateUserRequest.User
+            {
+                name = $"u{userId}",
+                password = "Password1!",
+                password_confirmation = "Password1!",
+            }
+        });
+
+        return e621User.api_key.key;
+    }
+
     private async Task<AnswerInlineQuery> ProcessInlineQuery(InlineQuery inlineQuery)
     {
         if(!await _stickerManDbService.IsUserAgeVerified(inlineQuery.from.id))

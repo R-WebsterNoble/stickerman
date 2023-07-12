@@ -57,6 +57,13 @@ public class RequestLoggerMiddleware
 
     public class HttpLoggingHandler : DelegatingHandler
     {
+        private readonly ILogger<HttpLoggingHandler> _logger;
+
+        public HttpLoggingHandler(ILogger<HttpLoggingHandler> logger)
+        {
+            _logger = logger;
+        }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
