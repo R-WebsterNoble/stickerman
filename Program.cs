@@ -58,8 +58,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseEndpoints(e =>
-    e.MapControllers()
-    .RequireAuthorization());
+app.MapControllers().RequireAuthorization();
 
 app.Run();
