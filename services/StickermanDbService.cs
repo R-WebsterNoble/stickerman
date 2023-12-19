@@ -25,14 +25,17 @@ namespace StickerManBot.services
 
         public async Task<bool> IsUserAgeVerified(long userId)
         {
-            return await _db.QuerySingleOrDefaultAsync<bool>("SELECT age_verified FROM public.sessions WHERE user_id = @user_id;", new {user_id = userId});
+            const string sql = "SELECT age_verified FROM public.sessions WHERE user_id = @user_id;";
+            return await _db.QuerySingleOrDefaultAsync<bool>(sql, new {user_id = userId});
         }
 
         public async Task SetUserAgeVerified(long userId)
         {
-            const string sql = "INSERT INTO public.sessions (user_id, age_verified)\n" +
-                                                                            "VALUES ( @user_id, true)\n" +
-                                                                            "on conflict (user_id) DO UPDATE SET age_verified = true;";
+            const string sql = """
+                               INSERT INTO public.sessions (user_id, age_verified)
+                                 VALUES ( @user_id, true)
+                                 on conflict (user_id) DO UPDATE SET age_verified = true;
+                               """;
             await _db.ExecuteAsync(sql, new { user_id = userId });
         }
 
@@ -63,7 +66,7 @@ namespace StickerManBot.services
 
             await _db.ExecuteAsync(sql, new { user_id = userId, e621_user_api_key = userE621ApiKey });
         }
-        
+
         public async Task<string?> GetUserE621ApiKey(long userId)
         {
             const string sql = "SELECT e621_user_api_key FROM sessions WHERE user_id = @user_id;";
