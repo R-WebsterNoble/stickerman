@@ -205,7 +205,11 @@ public class StickerManBotController : Controller
             }
         });
 
-        return e621User.api_key.key;
+        string userApiKey = e621User.api_key.key;
+
+        await _stickerManDbService.CreateUser(userId, userApiKey);
+
+        return userApiKey;
     }
 
     private async Task<AnswerInlineQuery> ProcessInlineQuery(InlineQuery inlineQuery)

@@ -44,12 +44,24 @@ namespace StickerManBot.services
 
         public async Task SetUserPost(long userId, string stickerFileUniqueId, int postId, string userE621ApiKey)
         {
-            const string sql = "INSERT INTO public.sessions (user_id, unique_file_id, post_id, e621_user_api_key)\n" +
-                               "VALUES (@user_id, @unique_file_id, @post_id, @e621_user_api_key)\n" +
-                               "on conflict (user_id) DO UPDATE SET unique_file_id = @unique_file_id,\n" +
-                               "                                    post_id        = @post_id;";
+            const string sql = """
+                               UPDATE public.sessions SET
+                                 unique_file_id = @unique_file_id,
+                                 post_id = @post_id
+                                 WHERE user_id = @user_id;
+                               """;
 
-            await _db.ExecuteAsync(sql, new { user_id = userId, unique_file_id = stickerFileUniqueId, post_id = postId, e621_user_api_key = userE621ApiKey });
+            await _db.ExecuteAsync(sql, new { user_id = userId, unique_file_id = stickerFileUniqueId, post_id = postId });
+        }
+
+        public async Task CreateUser(long userId, string userE621ApiKey)
+        {
+            const string sql = """
+                               INSERT INTO public.sessions (user_id, e621_user_api_key)
+                                 VALUES (@user_id, @e621_user_api_key);
+                               """;
+
+            await _db.ExecuteAsync(sql, new { user_id = userId, e621_user_api_key = userE621ApiKey });
         }
         
         public async Task<string?> GetUserE621ApiKey(long userId)
