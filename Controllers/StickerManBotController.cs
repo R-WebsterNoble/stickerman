@@ -195,13 +195,15 @@ public class StickerManBotController : Controller
         if (userE621ApiKey != null)
             return userE621ApiKey;
 
+        var password = Guid.NewGuid().ToString();
+
         var e621User = await _e621Api.CreateUser(new CreateUserRequest
-        {
+        {            
             user = new CreateUserRequest.User
             {
                 name = $"u{userId}",
-                password = "Password1!",
-                password_confirmation = "Password1!",
+                password = password,
+                password_confirmation = password,
                 email = $"u{userId}@stickermanbot.com"
             }
         });
