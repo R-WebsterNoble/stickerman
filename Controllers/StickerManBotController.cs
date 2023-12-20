@@ -202,6 +202,7 @@ public class StickerManBotController : Controller
                 name = $"u{userId}",
                 password = "Password1!",
                 password_confirmation = "Password1!",
+                email = $"u{userId}@stickermanbot.com"
             }
         });
 
