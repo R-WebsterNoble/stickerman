@@ -1,0 +1,6 @@
+version: '3.7'
+services:
+ stickermanbot:
+   image: stickermanbot-image
+   ports:
+     - "8443:8443"
