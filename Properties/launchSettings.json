@@ -1,4 +1,26 @@
-﻿{
+{
+  "profiles": {
+    "StickerManBot": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "weatherforecast",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SECRETS_FILES_PATH": "%HOMEPATH%\\Documents\\secrets"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:5016"
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "weatherforecast",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "SECRETS_FILES_PATH": "%HOMEPATH%\\Documents\\secrets"
+      }
+    }
+  },
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "iisSettings": {
     "windowsAuthentication": false,
@@ -6,26 +28,6 @@
     "iisExpress": {
       "applicationUrl": "http://localhost:40456",
       "sslPort": 0
-    }
-  },
-  "profiles": {
-    "StickerManBot": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "launchUrl": "weatherforecast",
-      "applicationUrl": "http://localhost:5016",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "IIS Express": {
-      "commandName": "IISExpress",
-      "launchBrowser": true,
-      "launchUrl": "weatherforecast",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
     }
   }
 }

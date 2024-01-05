@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using Refit;
 using StickerManBot;
@@ -8,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(_ => { });
+
+var secretsFilePath = Environment.ExpandEnvironmentVariables("%SECRETS_FILES_PATH%\\StickerManBot\\appsettings.secrets.json");
+builder.Configuration.AddJsonFile(secretsFilePath, false);
 
 // builder.Services.AddTransient<HttpLoggingHandler>();
 
@@ -32,7 +36,7 @@ builder.Services
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
         client.DefaultRequestHeaders.Accept.Clear();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    });//.AddHttpMessageHandler<HttpLoggingHandler>();
+    });//.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { ServerCertificateCustomValidationCallback = (message, cert, chain, sslErrors) => true });//.AddHttpMessageHandler<HttpLoggingHandler>();
 
 builder.Services
     .AddRefitClient<ITelegramApi>()
