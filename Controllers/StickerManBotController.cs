@@ -162,7 +162,7 @@ public class StickerManBotController : Controller
                 text = "Something went wrong when getting details for this sticker from Telegram"
             };
 
-        var userE621ApiKey = await GetUserE621ApiKey(userId);
+        var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
         
         var authenticationString = $"u{userId}:{userE621ApiKey}";
         var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
@@ -189,7 +189,7 @@ public class StickerManBotController : Controller
         };
     }
 
-    private async Task<string> GetUserE621ApiKey(long userId)
+    private async Task<string> GetUserE621ApiKey(long userId, string username)
     {
         var userE621ApiKey = await _stickerManDbService.GetUserE621ApiKey(userId);
         if (userE621ApiKey != null)
@@ -204,7 +204,7 @@ public class StickerManBotController : Controller
                 name = $"u{userId}",
                 password = password,
                 password_confirmation = password,
-                email = $"u{userId}@stickermanbot.com"
+                email = $"{username}@stickermanbot.com"
             }
         });
 
