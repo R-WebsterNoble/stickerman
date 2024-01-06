@@ -12,7 +12,6 @@ RUN dotnet publish StickerManBot.csproj -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /StickerManBot
 COPY --from=build-env /StickerManBot/out .
-COPY appsettings.secrets.json appsettings.secrets.json
 ENV DOTNET_EnableDiagnostics=0
 EXPOSE 7592
 ENTRYPOINT ["dotnet", "StickerManBot.dll"]
