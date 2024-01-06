@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(_ => { });
 
-var secretsFilePath = Environment.ExpandEnvironmentVariables("%SECRETS_FILES_PATH%\\StickerManBot\\appsettings.secrets.json");
+var secretsFilePath = Environment.ExpandEnvironmentVariables("%STICKERMANBOT_SECRETS_FILE%");
 builder.Configuration.AddJsonFile(secretsFilePath, false);
 
 // builder.Services.AddTransient<HttpLoggingHandler>();

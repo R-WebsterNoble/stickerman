@@ -6,7 +6,7 @@
       "launchUrl": "weatherforecast",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SECRETS_FILES_PATH": "%HOMEPATH%\\Documents\\secrets"
+        "STICKERMANBOT_SECRETS_FILE": "%HOMEPATH%\\Documents\\secrets\\StickerManBot\\appsettings.secrets.json"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5016"
@@ -17,7 +17,7 @@
       "launchUrl": "weatherforecast",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "SECRETS_FILES_PATH": "%HOMEPATH%\\Documents\\secrets"
+        "STICKERMANBOT_SECRETS_FILE": "%HOMEPATH%\\Documents\\secrets\\StickerManBot\\appsettings.secrets.json"
       }
     }
   },
