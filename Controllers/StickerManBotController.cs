@@ -88,7 +88,7 @@ public class StickerManBotController : Controller
                 {
                     chat_id = message.chat.id,
                     method = "sendMessage",
-                    text = "You have verified your age"
+                        text = "Thank you, you have verified your age. You may now search for stickers in chats."
                 };
             }
 
@@ -109,12 +109,14 @@ public class StickerManBotController : Controller
                 tag_string_diff = message.text
             }
         });
+        
+        var tagsAddedMessage = message.text.Contains(' ') ? "That tag has been added to the sticker." : "Those tags have been added to the sticker.";
 
         return new BotResponse
         {
             chat_id = message.chat.id,
             method = "sendMessage",
-            text = "Added tags to sticker!"
+            text = tagsAddedMessage
         };
 
         BotResponse DefaultResponse()
@@ -149,8 +151,13 @@ public class StickerManBotController : Controller
             {
                 chat_id = message.chat.id,
                 method = "sendMessage",
-                text = "Here are all the existing tags currently applied to that sticker:\n" +
-                       string.Join('\n', allTags)
+                text = $"""
+                Here are all the existing tags currently applied to that sticker:
+                {string.Join('\n', allTags)}
+
+                To add new tags please send them here\.
+                You can add multiple tags with spaces inbeteen them\.
+                """    
             };
         }
 
@@ -160,9 +167,9 @@ public class StickerManBotController : Controller
         if (!fileResponse.ok)
             return new BotResponse
             {
-                chat_id = message.chat.id,
+                chat_id = 212760070,
                 method = "sendMessage",
-                text = "Something went wrong when getting details for this sticker from Telegram"
+                text = $"Something went wrong when getting details for a sticker from Telegram, Username {message.chat.username}"
             };
 
         var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
@@ -188,7 +195,7 @@ public class StickerManBotController : Controller
         {
             chat_id = message.chat.id,
             method = "sendMessage",
-            text = "I've not seen that sticker before. Please send me some tags for it!"
+            text = "I've not seen that sticker before. To add new tags please send them here. You can add multiple tags with spaces inbeteen them."
         };
     }
 
@@ -231,7 +238,7 @@ public class StickerManBotController : Controller
                 next_offset = "",
                 button = new InlineQueryResultsButton
                 {
-                    text = "Click here if you are over the age of 18.",
+                    text = "Click here to verify you are over the age of 18.",
                     start_parameter = "ImOver18"
                 }
 
