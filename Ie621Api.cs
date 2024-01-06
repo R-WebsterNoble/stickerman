@@ -15,7 +15,7 @@ public interface IE621Api
     Task<UploadResult> Upload([Header("Authorization")] string accessToken, UploadRequest uploadRequest);
 
     [Patch("/posts/{postID}.json")]
-    Task Update(int postId, UpdateRequest updateRequest);
+    Task Update([Header("Authorization")] string accessToken, int postId, UpdateRequest updateRequest);
 
     [Post("/users.json")]
     Task<User> CreateUser(CreateUserRequest createUserRequest);

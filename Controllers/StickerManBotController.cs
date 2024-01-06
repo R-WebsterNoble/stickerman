@@ -99,7 +99,10 @@ public class StickerManBotController : Controller
         if(userPostId == null)
             return DefaultResponse();
 
-        await _e621Api.Update(userPostId.Value, new UpdateRequest
+        var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
+        var authenticationString = $"u{userId}:{userE621ApiKey}";
+        var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));        
+        await _e621Api.Update($"basic {base64EncodedAuthenticationString}", userPostId.Value, new UpdateRequest
         {
             post = new UpdateRequest.Post
             {
