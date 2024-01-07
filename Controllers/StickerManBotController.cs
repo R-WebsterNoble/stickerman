@@ -48,7 +48,7 @@ public class StickerManBotController : Controller
 
             return Ok(new BotResponse
             {
-                chat_id = 212760070,
+                chat_id = _config.GetValue<long>("UserIdToReportErrorsTo"),
                 method = "sendMessage",
                 text = "Error:\n" +
                        e.Message +
@@ -167,7 +167,7 @@ public class StickerManBotController : Controller
         if (!fileResponse.ok)
             return new BotResponse
             {
-                chat_id = 212760070,
+                chat_id = _config.GetValue<long>("UserIdToReportErrorsTo"),
                 method = "sendMessage",
                 text = $"Something went wrong when getting details for a sticker from Telegram, Username {message.chat.username}"
             };
