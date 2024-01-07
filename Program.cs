@@ -10,7 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(_ => { });
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddNpgSql(s => s.GetRequiredService<IConfiguration>().GetConnectionString("StickerManDSN") ?? throw new InvalidOperationException("StickerManDSN is missing from configuration"));
 
 var secretsFilePath = Environment.ExpandEnvironmentVariables("%STICKERMANBOT_SECRETS_FILE%");
 builder.Configuration.AddJsonFile(secretsFilePath, false);
