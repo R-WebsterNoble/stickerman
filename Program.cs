@@ -10,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();
 builder.Services.AddHttpLogging(_ => { });
 
+builder.Services.AddHealthChecks();
+
 var secretsFilePath = Environment.ExpandEnvironmentVariables("%STICKERMANBOT_SECRETS_FILE%");
 builder.Configuration.AddJsonFile(secretsFilePath, false);
 
@@ -54,6 +56,7 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.MapHealthChecks("/HealthCheck");
 
 app.UseMiddleware<RequestLoggerMiddleware>();
 
