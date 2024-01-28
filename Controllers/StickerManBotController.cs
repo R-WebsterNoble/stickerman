@@ -29,9 +29,6 @@ public class StickerManBotController : Controller
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] Update update)
     {
-        if (update.message?.chat == null && update.inline_query == null)
-            return Ok();
-
         try
         {
             if (update.message != null)
@@ -40,7 +37,11 @@ public class StickerManBotController : Controller
             if (update.inline_query != null)
                 return Ok(await ProcessInlineQuery(update.inline_query));
 
-            throw new NotImplementedException("No handler for this update");
+            if (update.callback_query != null)
+                return Ok(await ProcessCallbackQuery(update.callback_query));
+
+            //throw new NotImplementedException("No handler for this update");
+            return Ok();
         }
         catch (Exception e)
         {
@@ -77,27 +78,48 @@ public class StickerManBotController : Controller
         }
 
         if(string.IsNullOrWhiteSpace(message.text))
-            return DefaultResponse();
+            return DefaultResponse(message.chat.id);
 
         if (message.text.Length > 0 && message.text[0] == '/')
         {
-            if (message.text == "/start ImOver18")
+            if (message.text == "/start")
             {
-                await _stickerManDbService.SetUserAgeVerified(userId);
-                return new BotResponse
+                if (await _stickerManDbService.IsUserAgeVerified(userId))
+                    return DefaultResponse(message.chat.id);
+
+                return new InlineKeyboardBotResponse
                 {
                     chat_id = message.chat.id,
                     method = "sendMessage",
-                        text = "Thank you, you have verified your age. You may now search for stickers in chats."
-                };
+                    text = "Welcome! Before using this Bot for the first time, please verify your age:",
+                    reply_markup = new ReplyMarkup
+                    {
+                        inline_keyboard = [
+                        [new InlineKeyboard { text = "I am 18+", callback_data = "true" }, new InlineKeyboard { text = "Get me out of here", callback_data = "false" }]
+                    ]
+                    }
+                };                
             }
-
-            return DefaultResponse();
+            else if (message.text == "/start ImOver18")
+            {
+                if (!await _stickerManDbService.IsUserAgeVerified(userId))
+                {
+                    await _stickerManDbService.SetUserAgeVerified(userId);
+                    return new BotResponse
+                    {
+                        chat_id = message.chat.id,
+                        method = "sendMessage",
+                        text = "Thank you, you have verified your age. You may now search for stickers in chats."
+                    };
+                }
+            }
+            else
+                return DefaultResponse(message.chat.id);
         }
 
         var userPostId = await _stickerManDbService.GetUserPostFromSession(userId);
         if(userPostId == null)
-            return DefaultResponse();
+            return DefaultResponse(message.chat.id);
 
         var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
         var authenticationString = $"u{userId}:{userE621ApiKey}";
@@ -119,21 +141,23 @@ public class StickerManBotController : Controller
             text = tagsAddedMessage
         };
 
-        BotResponse DefaultResponse()
+
+    }
+
+    BotResponse DefaultResponse(long chatid)
+    {
+        return new BotResponse
         {
-            return new BotResponse
-            {
-                chat_id = message.chat.id,
-                method = "sendMessage",
-                text = "Hi, I'm Sticker Manager Bot.\n" +
-                       "I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
-                       "\n" +
-                       "Usage:\n" +
-                       "To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
-                       "\n" +
-                       "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
-            };
-        }
+            chat_id = chatid,
+            method = "sendMessage",
+            text = "Hi, I'm Sticker Manager Bot.\n" +
+                   "I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
+                   "\n" +
+                   "Usage:\n" +
+                   "To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
+                   "\n" +
+                   "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
+        };
     }
 
     private async Task<BotResponse> ProcessSticker(Message message, Sticker sticker, long userId)
@@ -270,5 +294,23 @@ public class StickerManBotController : Controller
             is_personal = true,
             next_offset = nextPage
         };
+    }
+
+    private async Task<BotResponse> ProcessCallbackQuery(CallbackQuery inlineQuery)
+    {
+        var chatId = inlineQuery.message.chat.id;
+
+        if (bool.TryParse(inlineQuery.data, out var data) && data)
+        {
+            await _stickerManDbService.SetUserAgeVerified(chatId);
+            return DefaultResponse(chatId);
+        }
+        else
+            return new BotResponse
+            {
+                chat_id = chatId,
+                method = "sendMessage",
+                text = "Sorry, please come back when you are older."
+            };
     }
 }
