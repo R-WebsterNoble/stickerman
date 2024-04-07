@@ -63,21 +63,26 @@ public class StickerManBotController : Controller
 
     private async Task<BotResponse> ProcessMessage(Message message)
     {
-        if (message.reply_to_message != null)
-        {
-            message.reply_to_message.text = message.text;
-            message = message.reply_to_message;
-        }
-
-        var sticker = message.sticker;
-
         var userId = message.from!.id;
-        if (sticker != null)
+
+        if (message.reply_to_message == null)
         {
-            return await ProcessSticker(message, sticker, userId);
+            if (message.sticker != null)
+            {
+                return await ProcessSticker(message, message.sticker, userId);
+            }
+        }
+        else
+        {
+            var sticker = message.reply_to_message.sticker;
+
+            if (sticker != null)
+            {
+                await ProcessSticker(message, sticker, userId);
+            }
         }
 
-        if(string.IsNullOrWhiteSpace(message.text))
+        if (string.IsNullOrWhiteSpace(message.text))
             return DefaultResponse(message.chat.id);
 
         if (message.text.Length > 0 && message.text[0] == '/')
@@ -95,8 +100,8 @@ public class StickerManBotController : Controller
                     reply_markup = new ReplyMarkup
                     {
                         inline_keyboard = [
-                        [new InlineKeyboard { text = "I am 18+", callback_data = "true" }, new InlineKeyboard { text = "Get me out of here", callback_data = "false" }]
-                    ]
+                            [new InlineKeyboard { text = "I am 18+", callback_data = "true" }, new InlineKeyboard { text = "Get me out of here", callback_data = "false" }]
+                        ]
                     }
                 };                
             }
@@ -140,8 +145,6 @@ public class StickerManBotController : Controller
             method = "sendMessage",
             text = tagsAddedMessage
         };
-
-
     }
 
     BotResponse DefaultResponse(long chatid)
@@ -169,7 +172,7 @@ public class StickerManBotController : Controller
             var tags = posts.posts.First().tags;
 
             var allTags = tags.copyright.Select(t => $"[{t}](https://t.me/addstickers/{t})")
-                .Concat(tags.general.Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1")));
+                .Concat(tags.general.Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1"))); //escape markdown special charachters
 
             return new MarkdownBotResponse()
             {
