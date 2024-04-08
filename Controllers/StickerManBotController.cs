@@ -167,12 +167,17 @@ public class StickerManBotController : Controller
     {
         var posts = await _e621Api.GetPost(sticker.file_unique_id);
 
+        var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
+
         if (posts.posts.Length != 0)
         {
-            var tags = posts.posts.First().tags;
+            var post = posts.posts.First();
+            var tags = post.tags;
 
             var allTags = tags.copyright.Select(t => $"[{t}](https://t.me/addstickers/{t})")
                 .Concat(tags.general.Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1"))); //escape markdown special charachters
+
+            await _stickerManDbService.SetUserPost(userId, sticker.file_unique_id, post.id, userE621ApiKey);
 
             return new MarkdownBotResponse()
             {
@@ -199,7 +204,6 @@ public class StickerManBotController : Controller
                 text = $"Something went wrong when getting details for a sticker from Telegram, Username {message.chat.username}"
             };
 
-        var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
         
         var authenticationString = $"u{userId}:{userE621ApiKey}";
         var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
