@@ -214,7 +214,7 @@ public class StickerManBotController : Controller
                 {
                     direct_url =
                         $"https://api.telegram.org/file/bot{_config.GetValue<string>("TelegramApiToken")}/{fileResponse.result.file_path}",
-                    tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? "animated" : "")}",
+                    tag_string = $"Copyright:{sticker.set_name}{(sticker.is_animated ? " animated" : "")}",
                     source = $"{sticker.file_unique_id}%0A{sticker.file_id}",
                     rating = "e"
                 }

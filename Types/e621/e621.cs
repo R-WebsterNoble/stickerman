@@ -106,10 +106,10 @@ public class Relationships
 public class GetFileResponse
 {
     public bool ok { get; set; }
-    public Result result { get; set; }
+    public GetFileResponseResult result { get; set; }
 }
 
-public class Result
+public class GetFileResponseResult
 {
     public string file_id { get; set; }
     public string file_unique_id { get; set; }
