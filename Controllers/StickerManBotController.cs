@@ -137,7 +137,7 @@ public class StickerManBotController : Controller
             }
         });
         
-        var tagsAddedMessage = message.text.Contains(' ') ? "That tag has been added to the sticker." : "Those tags have been added to the sticker.";
+        var tagsAddedMessage = message.text.Contains(' ') ? "Those tags have been added to the sticker." : "That tag has been added to the sticker.";
 
         return new BotResponse
         {
