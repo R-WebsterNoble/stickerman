@@ -64,21 +64,22 @@ public class StickerManBotController : Controller
     private async Task<BotResponse> ProcessMessage(Message message)
     {
         var userId = message.from!.id;
+        Sticker? sticker = null;
 
-        if (message.reply_to_message == null)
+        if (message.reply_to_message != null)
         {
-            if (message.sticker != null)
-            {
-                return await ProcessSticker(message, message.sticker, userId);
-            }
-        }
-        else
-        {
-            var sticker = message.reply_to_message.sticker;
+            sticker = message.reply_to_message.sticker;
 
             if (sticker != null)
             {
                 await ProcessSticker(message, sticker, userId);
+            }
+        }
+        else
+        {
+            if (message.sticker != null)
+            {
+                return await ProcessSticker(message, message.sticker, userId);
             }
         }
 
@@ -103,7 +104,7 @@ public class StickerManBotController : Controller
                             [new InlineKeyboard { text = "I am 18+", callback_data = "true" }, new InlineKeyboard { text = "Get me out of here", callback_data = "false" }]
                         ]
                     }
-                };                
+                };
             }
             else if (message.text == "/start ImOver18")
             {
@@ -123,21 +124,13 @@ public class StickerManBotController : Controller
         }
 
         var userPostId = await _stickerManDbService.GetUserPostFromSession(userId);
-        if(userPostId == null)
+        if (userPostId == null || message.text.Contains(':'))
             return DefaultResponse(message.chat.id);
 
         var userE621ApiKey = await GetUserE621ApiKey(userId, message.chat.username);
-        var authenticationString = $"u{userId}:{userE621ApiKey}";
-        var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));        
-        await _e621Api.Update($"basic {base64EncodedAuthenticationString}", userPostId.Value, new UpdateRequest
-        {
-            post = new UpdateRequest.Post
-            {
-                tag_string_diff = message.text
-            }
-        });
-        
-        var tagsAddedMessage = message.text.Contains(' ') ? "Those tags have been added to the sticker." : "That tag has been added to the sticker.";
+        await UpdatePost(message.text, userId, sticker, userPostId.Value, userE621ApiKey);
+
+        var tagsAddedMessage = message.text.Contains(' ') ? "I've updated the sticker with those tags." : "I've updated the sticker with that tag.";
 
         return new BotResponse
         {
@@ -147,19 +140,32 @@ public class StickerManBotController : Controller
         };
     }
 
+    private async Task UpdatePost(string messageText, long userId, Sticker? sticker, int userPostId, string userE621ApiKey)
+    {
+        var authenticationString = $"u{userId}:{userE621ApiKey}";
+        var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authenticationString));
+        await _e621Api.Update($"basic {base64EncodedAuthenticationString}", userPostId, new UpdateRequest
+        {
+            post = new UpdateRequest.Post
+            {
+                tag_string_diff =  messageText
+            }
+        });
+    }
+
     BotResponse DefaultResponse(long chatid)
     {
         return new BotResponse
         {
             chat_id = chatid,
             method = "sendMessage",
-            text = "Hi, I'm Sticker Manager Bot.\n" +
+            text = "Hi, I'm the Sticker Manager Bot.\n" +
                    "I'll help you manage your stickers by letting you tag them so you can easily find them later.\n" +
                    "\n" +
                    "Usage:\n" +
-                   "To add a sticker tag, first send me a sticker to this chat, then send the tags you'd like to add to the sticker.\n" +
+                   "To add a sticker tag, first send the sticker to this chat, then send the tag(s) you'd like to add.\n" +
                    "\n" +
-                   "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags of the stickers that you are looking for."
+                   "You can then easily search for tagged stickers in any chat. Just type: @StickerManBot followed by the tags(s) of the stickers that you're looking for."
         };
     }
 
@@ -174,8 +180,20 @@ public class StickerManBotController : Controller
             var post = posts.posts.First();
             var tags = post.tags;
 
+            if (tags.copyright.Length != 1 || tags.copyright[0] != sticker.set_name.ToLower())
+            {
+                var removeTags = $"-{string.Join(" -", tags.copyright)}";
+                await UpdatePost($"{removeTags} copyright:{sticker.set_name}", userId, sticker, post.id, userE621ApiKey); // replace migratedfromlegacy tag if present
+                tags.copyright = [sticker.set_name.ToLower()];
+            }
+
             var allTags = tags.copyright.Select(t => $"[{t}](https://t.me/addstickers/{t})")
-                .Concat(tags.general.Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1"))); //escape markdown special charachters
+                .Concat(
+                    tags.general
+                        .Where(t => !Regex.IsMatch(t, "^(low_res|thumbnail)$", RegexOptions.Compiled)) // Don't list "low_res" or "thumbnail" tags
+                        .Select(t => Regex.Replace(t, @"([_*\[\]\(\)~`>#\+\-\=|{}.!])", @"\$1", RegexOptions.Compiled)) //escape markdown special charachters
+                );
+
 
             await _stickerManDbService.SetUserPost(userId, sticker.file_unique_id, post.id, userE621ApiKey);
 
@@ -184,7 +202,7 @@ public class StickerManBotController : Controller
                 chat_id = message.chat.id,
                 method = "sendMessage",
                 text = $"""
-                Here are all the existing tags currently applied to that sticker:
+                Here's all the existing tags currently associated with that sticker:
                 {string.Join('\n', allTags)}
 
                 To add new tags please send them here\.
