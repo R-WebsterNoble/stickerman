@@ -34,7 +34,8 @@ public class StickerManBotAuthenticationHandler : AuthenticationHandler<StickerM
 
     private static readonly AuthenticationTicket SuccessAuthenticationTicket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(new List<Claim>(), "auth")), "StickerManBotAuthentication");
 
-    public StickerManBotAuthenticationHandler(IOptionsMonitor<StickerManBotAuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock) : base(options, logger, encoder, clock)
+    public StickerManBotAuthenticationHandler(IOptionsMonitor<StickerManBotAuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+        : base(options, logger, encoder)
     {
         _options = options;
     }
@@ -42,9 +43,12 @@ public class StickerManBotAuthenticationHandler : AuthenticationHandler<StickerM
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue("X-Telegram-Bot-Api-Secret-Token", out var token))
-            return Task.FromResult(AuthenticateResult.Fail("No X-Telegram-Bot-Api-Secret-Token header present"));
+            return Task.FromResult(AuthenticateResult.Fail("X-Telegram-Bot-Api-Secret-Token header absent"));
 
-        if (!CryptographicOperations.FixedTimeEquals(new ReadOnlySpan<byte>(_options.CurrentValue.TokenBytes), new ReadOnlySpan<byte>(Encoding.UTF8.GetBytes(token))))
+        if (string.IsNullOrEmpty(token))
+            return Task.FromResult(AuthenticateResult.Fail("X-Telegram-Bot-Api-Secret-Token header present but null"));
+
+        if (!CryptographicOperations.FixedTimeEquals(new ReadOnlySpan<byte>(_options.CurrentValue.TokenBytes), new ReadOnlySpan<byte>(Encoding.UTF8.GetBytes(token!))))
             return Task.FromResult(AuthenticateResult.Fail("X-Telegram-Bot-Api-Secret-Token header present but mismatch"));
 
         return Task.FromResult(AuthenticateResult.Success(SuccessAuthenticationTicket));
