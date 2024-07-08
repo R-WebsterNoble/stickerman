@@ -61,7 +61,8 @@ namespace StickerManBot.services
         {
             const string sql = """
                                INSERT INTO public.sessions (user_id, e621_user_api_key)
-                                 VALUES (@user_id, @e621_user_api_key);
+                                 VALUES (@user_id, @e621_user_api_key)
+                                 on conflict (user_id) DO UPDATE SET e621_user_api_key = @e621_user_api_key;
                                """;
 
             await _db.ExecuteAsync(sql, new { user_id = userId, e621_user_api_key = userE621ApiKey });
